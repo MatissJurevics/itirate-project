@@ -18,7 +18,7 @@ import {
 const data = {
   navMain: [
     {
-      title: "Your Pages",
+      title: "Create Page",
       url: "/app",
       items: [
         {
