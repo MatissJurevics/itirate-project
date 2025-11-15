@@ -10,32 +10,32 @@ const createCommonSchemas = () => {
     text: z.string().optional(),
     align: z.enum(['left', 'center', 'right']).optional(),
     style: z.record(z.string(), z.unknown()).optional(),
-  }).loose().optional();
+  }).passthrough().optional();
 
   const axisSchema = z.object({
     categories: z.array(z.string()).optional().describe('Category labels for the axis'),
     title: z.object({
       text: z.string().optional(),
-    }).loose().optional(),
+    }).passthrough().optional(),
     type: z.enum(['linear', 'logarithmic', 'datetime', 'category']).optional(),
     min: z.number().optional(),
     max: z.number().optional(),
     labels: z.record(z.string(), z.unknown()).optional(),
-  }).loose();
+  }).passthrough();
 
   const tooltipSchema = z.object({
     enabled: z.boolean().optional(),
     shared: z.boolean().optional(),
     crosshairs: z.boolean().optional(),
     // Note: formatter functions cannot be set via AI tools (functions are not JSON-serializable)
-  }).loose().optional();
+  }).passthrough().optional();
 
   const legendSchema = z.object({
     enabled: z.boolean().optional(),
     align: z.enum(['left', 'center', 'right']).optional(),
     verticalAlign: z.enum(['top', 'middle', 'bottom']).optional(),
     layout: z.enum(['horizontal', 'vertical', 'proximate']).optional(),
-  }).loose().optional();
+  }).passthrough().optional();
 
   return { titleSchema, axisSchema, tooltipSchema, legendSchema };
 };
@@ -54,7 +54,7 @@ const createBasicChartSchema = (chartType: 'line' | 'spline' | 'column' | 'bar' 
       height: z.number().optional(),
       backgroundColor: z.string().optional(),
       animation: z.boolean().optional(),
-    }).loose().optional(),
+    }).passthrough().optional(),
 
     title: titleSchema,
     subtitle: titleSchema,
@@ -67,7 +67,7 @@ const createBasicChartSchema = (chartType: 'line' | 'spline' | 'column' | 'bar' 
       data: z.array(z.number()).describe('Simple numeric values for the data points'),
       color: z.string().optional().describe('Hex color code or named color'),
       yAxis: z.union([z.number(), z.string()]).optional(),
-    }).loose()).describe('Array of data series to display'),
+    }).passthrough()).describe('Array of data series to display'),
 
     plotOptions: z.record(z.string(), z.unknown()).optional(),
     tooltip: tooltipSchema,
@@ -76,7 +76,7 @@ const createBasicChartSchema = (chartType: 'line' | 'spline' | 'column' | 'bar' 
     colors: z.array(z.string()).optional().describe('Global color palette for series'),
     credits: z.object({ enabled: z.boolean().optional() }).optional(),
 
-  }).loose();
+  }).passthrough();
 };
 
 /**
@@ -97,7 +97,7 @@ const createScatterChartSchema = (chartType: 'scatter' | 'bubble') => {
       height: z.number().optional(),
       backgroundColor: z.string().optional(),
       animation: z.boolean().optional(),
-    }).loose().optional(),
+    }).passthrough().optional(),
 
     title: titleSchema,
     subtitle: titleSchema,
@@ -112,8 +112,8 @@ const createScatterChartSchema = (chartType: 'scatter' | 'bubble') => {
       marker: z.object({
         radius: z.number().optional(),
         symbol: z.string().optional(),
-      }).loose().optional(),
-    }).loose()).describe('Array of data series with coordinate pairs'),
+      }).passthrough().optional(),
+    }).passthrough()).describe('Array of data series with coordinate pairs'),
 
     plotOptions: z.record(z.string(), z.unknown()).optional(),
     tooltip: tooltipSchema,
@@ -122,7 +122,7 @@ const createScatterChartSchema = (chartType: 'scatter' | 'bubble') => {
     colors: z.array(z.string()).optional(),
     credits: z.object({ enabled: z.boolean().optional() }).optional(),
 
-  }).loose();
+  }).passthrough();
 };
 
 /**
@@ -139,7 +139,7 @@ const createPieChartSchema = () => {
       height: z.number().optional(),
       backgroundColor: z.string().optional(),
       animation: z.boolean().optional(),
-    }).loose().optional(),
+    }).passthrough().optional(),
 
     title: titleSchema,
     subtitle: titleSchema,
@@ -151,9 +151,9 @@ const createPieChartSchema = () => {
         y: z.number().describe('Value/size of the slice'),
         color: z.string().optional(),
         sliced: z.boolean().optional().describe('Whether the slice should be separated from the pie'),
-      }).loose()).describe('Array of pie slices with names and values'),
+      }).passthrough()).describe('Array of pie slices with names and values'),
       innerSize: z.string().optional().describe('Creates a donut chart if set (e.g., "50%")'),
-    }).loose()).describe('Pie chart series (typically only one series)'),
+    }).passthrough()).describe('Pie chart series (typically only one series)'),
 
     plotOptions: z.record(z.string(), z.unknown()).optional(),
     tooltip: tooltipSchema,
@@ -162,7 +162,7 @@ const createPieChartSchema = () => {
     colors: z.array(z.string()).optional(),
     credits: z.object({ enabled: z.boolean().optional() }).optional(),
 
-  }).loose();
+  }).passthrough();
 };
 
 /**
@@ -183,7 +183,7 @@ const createAdvancedChartSchema = () => {
       height: z.number().optional(),
       backgroundColor: z.string().optional(),
       animation: z.boolean().optional(),
-    }).loose().optional(),
+    }).passthrough().optional(),
 
     title: titleSchema,
     subtitle: titleSchema,
@@ -207,10 +207,10 @@ const createAdvancedChartSchema = () => {
           close: z.number().optional(),
           name: z.string().optional(),
           color: z.string().optional(),
-        }).loose()).describe('Array of data point objects with various properties'),
+        }).passthrough()).describe('Array of data point objects with various properties'),
       ]).optional().describe('Data format varies by chart type - see Highcharts documentation'),
       color: z.string().optional(),
-    }).loose()).optional(),
+    }).passthrough()).optional(),
 
     plotOptions: z.record(z.string(), z.unknown()).optional(),
     tooltip: tooltipSchema,
@@ -220,7 +220,7 @@ const createAdvancedChartSchema = () => {
     colors: z.array(z.string()).optional(),
     credits: z.object({ enabled: z.boolean().optional() }).optional(),
 
-  }).loose();
+  }).passthrough();
 };
 
 /**
