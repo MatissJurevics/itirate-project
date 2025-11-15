@@ -16,34 +16,22 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { FileText } from "lucide-react"
+import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
+import type { ChartType } from "@/lib/charts/types"
 
 interface PageContentProps {
   id: string
 }
 
-type WidgetType = 
-  | "line" 
-  | "bar" 
-  | "pie" 
-  | "donut" 
-  | "area" 
-  | "spline" 
-  | "area-spline" 
-  | "scatter" 
-  | "gauge" 
-  | "column" 
-  | "bar-horizontal"
-  | "map"
-  | "map-bubble"
-
 interface Widget {
   data?: any;
   title?: string;
-  widgetType?: WidgetType;
+  type?: ChartType;
+  widgetType?: ChartType; // For backward compatibility
   categories?: string[];
   mapData?: any;
   mapType?: string;
-  highchartsConfig?: any; // If provided, use this directly instead of widgetType/data
+  highchartsConfig?: any;
 }
 
 export function PageContent({ id }: PageContentProps) {
@@ -68,7 +56,28 @@ export function PageContent({ id }: PageContentProps) {
         console.error("Failed to fetch dashboard:", error);
         setDashboard(null)
       } else {
-        setDashboard(data)
+        // Normalize widgets using the adapter if they're in API response format
+        const normalizedData = {
+          ...data,
+          widgets: (data.widgets || []).map((widget: any) => {
+            // Check if widget is in API response format
+            // An API response has multiple top-level fields like chartId, success, chartType, widgetConfig, etc.
+            // A normalized widget typically only has widgetType, data, title, highchartsConfig, etc.
+            const isApiResponseFormat = 
+              (widget.chartId !== undefined || widget.success !== undefined) ||
+              (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
+              (widget.dataPreview !== undefined && widget.chartType !== undefined)
+
+            if (isApiResponseFormat) {
+              // Use adapter to convert API response format to Widget format
+              return adaptChartData(widget as ChartApiResponse)
+            }
+            
+            // Widget is already in the correct format, return as-is
+            return widget
+          })
+        }
+        setDashboard(normalizedData)
       }
       setLoading(false)
     };
@@ -105,7 +114,7 @@ export function PageContent({ id }: PageContentProps) {
                   <div className="bg-muted/50 aspect-video rounded-xl flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full" key={idx}>
                     <DashboardChart
                       highchartsConfig={widget.highchartsConfig}
-                      type={widget.widgetType}
+                      type={widget.type || widget.widgetType}
                       data={widget.data}
                       title={widget.title}
                       categories={widget.categories}
@@ -121,9 +130,7 @@ export function PageContent({ id }: PageContentProps) {
               </div>
             )}
           </div>
-          {!loading && dashboard && (
-            <div className="bg-muted/50 flex-1 rounded-xl min-h-[200px]" />
-          )}
+        
         </div>
       </div>
       <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 flex items-center gap-4 z-50">

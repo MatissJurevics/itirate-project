@@ -40,10 +40,10 @@ export function DashboardChart({
     if (highchartsConfig) {
       return {
         ...highchartsConfig,
-        chart: {
+      chart: {
           ...highchartsConfig.chart,
-          height: chartHeight,
-          width: null, // Auto-resize to container width
+        height: chartHeight,
+        width: null, // Auto-resize to container width
         },
       }
     }
