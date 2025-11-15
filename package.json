@@ -52,6 +52,8 @@
     "@vercel/analytics": "^1.5.0",
     "@xyflow/react": "^12.9.3",
     "ai": "^5.0.93",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.81.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
