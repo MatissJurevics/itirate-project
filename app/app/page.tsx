@@ -1,59 +1,68 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+"use client"
+
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Paperclip } from "lucide-react"
+import { useRef, ChangeEvent, useEffect } from "react"
+
 
 export default function Page() {
+
+
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "19rem",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
+    <>
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator
+          orientation="vertical"
+          className="mr-2 data-[orientation=vertical]:h-4"
+        />
+      </header>
+      <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-6 w-full max-w-2xl px-4">
+            <h1 className="text-2xl font-medium text-foreground">
+              What can I do for you today?
+            </h1>
+            <form
+              className="flex flex-col gap-3 w-full"
+              onSubmit={e => { e.preventDefault(); /* handle submit here */ }}
+            >
+              <div className="relative flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Ask anything"
+                  className="h-14 text-base rounded-xl pr-12"
+                />
+                <input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  accept="*/*"
+                  multiple={false}
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="absolute right-2 cursor-pointer"
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="hover:bg-accent"
+                    aria-label="Attach file"
+                    tabIndex={-1}
+                  >
+                    <Paperclip className="size-5" />
+                  </Button>
+                </label>
+              </div>
+            </form>
           </div>
-          <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </>
   )
 }
