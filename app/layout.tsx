@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from "@/components/ui/toaster"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { SidebarWrapper } from "@/components/sidebar-wrapper"
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -40,8 +41,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         <TooltipProvider>
-          {children}
-          <Toaster />
+          <SidebarWrapper>
+            {children}
+            <Toaster />
+          </SidebarWrapper>
         </TooltipProvider>
         <Analytics />
       </body>
