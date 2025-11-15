@@ -51,7 +51,7 @@ export function PageContent({ id }: PageContentProps) {
     fetchDashboard();
   }, [id]);
   
-  const audioUrl = dashboard?.audio_url || null
+  const audioUrl = dashboard?.audio || null
   const transcript = dashboard?.transcript || null
   
   return (
@@ -77,7 +77,7 @@ export function PageContent({ id }: PageContentProps) {
                   },
                   idx: number
                 ) => (
-                  <div className="bg-muted/50 aspect-video rounded-xl flex items-center justify-center p-2" key={idx}>
+                  <div className="bg-muted/50 aspect-video rounded-xl flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full" key={idx}>
                     <DashboardChart
                       type={widget.widgetType}
                       data={widget.data}

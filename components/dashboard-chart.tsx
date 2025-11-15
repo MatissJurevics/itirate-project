@@ -35,12 +35,39 @@ export function DashboardChart({
   categories,
   height = 350,
 }: DashboardChartProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [chartHeight, setChartHeight] = React.useState(height)
+
+  React.useEffect(() => {
+    const updateHeight = () => {
+      if (containerRef.current) {
+        const containerHeight = containerRef.current.clientHeight
+        // Subtract padding (2 * 8px = 16px) to account for container padding
+        const availableHeight = containerHeight - 16
+        // Set a minimum height but allow it to shrink
+        setChartHeight(Math.max(availableHeight, 200))
+      }
+    }
+
+    updateHeight()
+
+    const resizeObserver = new ResizeObserver(updateHeight)
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [height])
+
   // Determine chart options based on type
   const options: Highcharts.Options = React.useMemo(() => {
     const base: Highcharts.Options = {
       chart: {
         type: type === "bar" ? "column" : type,
-        height,
+        height: chartHeight,
+        width: null, // Auto-resize to container width
         backgroundColor: "transparent",
         spacing: [20, 20, 20, 20],
         animation: {
@@ -52,7 +79,8 @@ export function DashboardChart({
       },
       colors: STRIPE_COLORS,
       title: {
-        text: title || "",
+        text: title ? `<div style="width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: block;">${title}</div>` : "",
+        useHTML: true,
         style: {
           color: "#1F2937",
           fontSize: "16px",
@@ -104,6 +132,60 @@ export function DashboardChart({
             duration: 750,
           },
         },
+      },
+      responsive: {
+        rules: [
+          {
+            condition: {
+              maxWidth: 768
+            },
+            chartOptions: {
+              title: {
+                style: {
+                  fontSize: "14px",
+                },
+              },
+              legend: {
+                itemStyle: {
+                  fontSize: "11px",
+                },
+                symbolRadius: 3,
+              },
+              plotOptions: {
+                series: {
+                  dataLabels: {
+                    style: {
+                      fontSize: "10px",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          {
+            condition: {
+              maxWidth: 480
+            },
+            chartOptions: {
+              title: {
+                style: {
+                  fontSize: "12px",
+                },
+                margin: 10,
+              },
+              legend: {
+                itemStyle: {
+                  fontSize: "10px",
+                },
+                symbolRadius: 2,
+                itemMarginBottom: 4,
+              },
+              chart: {
+                spacing: [10, 10, 10, 10],
+              },
+            },
+          },
+        ],
       },
     }
 
@@ -316,10 +398,10 @@ export function DashboardChart({
     }
 
     return base
-  }, [type, data, title, categories, height])
+  }, [type, data, title, categories, chartHeight])
 
   return (
-    <div>
+    <div ref={containerRef} className="w-full h-full min-w-0 overflow-hidden">
       <Chart highcharts={Highcharts} options={options} />
     </div>
   )
