@@ -40,8 +40,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const records = csvData as Record<string, any>[]
-    const columns = csvColumns as string[]
+    // Extract column names and infer types from first row
+    const columns = Object.keys(records[0])
+
+    // Generate CSV ID using timestamp + random string (e.g., 1763234493594_w0ydhk)
+    const timestamp = Date.now()
+    const randomSuffix = Math.random().toString(36).substring(2, 8)
+    const csvId = `${timestamp}_${randomSuffix}`
+    const tableName = `csv_${csvId}`
 
     const supabase = await createClient()
 
@@ -65,12 +71,12 @@ export async function POST(request: NextRequest) {
       return `${sanitizedCol} ${type}`
     })
 
-    // Build the SQL to create table
+    // Build the SQL to create table in csv_to_table schema
     const createTableSQL = `
       CREATE SCHEMA IF NOT EXISTS csv_to_table;
-
+      
       CREATE TABLE IF NOT EXISTS csv_to_table."${tableName}" (
-        internal_database_id SERIAL PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         ${columnDefinitions.join(',\n        ')}
       );
     `
@@ -138,10 +144,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      csvId,
       tableName,
-      schema: 'csv_to_table',
+      fileName,
       rowCount: records.length,
-      columns: insertColumns
+      columns: insertColumns,
+      columnDefinitions: columns.map((col, index) => ({
+        name: col,
+        sanitizedName: insertColumns[index],
+        type: columnDefinitions[index].split(' ')[1]
+      }))
     })
 
   } catch (error) {
