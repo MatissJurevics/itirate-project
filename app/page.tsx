@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from 'next/navigation'
-import { Loader2, PaperclipIcon, SendIcon } from 'lucide-react'
+import { Loader2, PaperclipIcon, SendIcon, X, FileText } from 'lucide-react'
 import {
   PromptInput,
   PromptInputBody,
@@ -13,14 +13,20 @@ import {
   PromptInputSubmit,
   type PromptInputMessage
 } from "@/components/ai-elements/prompt-input"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 export default function Home() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mousePosition, setMousePosition] = useState({
     x: 0,
     y: 0
   })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const supabase = createClient()
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -34,13 +40,100 @@ export default function Home() {
     return () => window.removeEventListener("mousemove", handleMouseMove)
   }, [])
 
-  const handleSubmit = async (_message: PromptInputMessage) => {
+  const handleSubmit = async (message: PromptInputMessage) => {
     setIsLoading(true)
+
+    let csvUrl = ''
+
+    // Upload file if one is selected
+    if (selectedFile) {
+      setIsUploading(true)
+      try {
+        console.log('Starting file upload...', selectedFile.name, selectedFile.type, selectedFile.size)
+
+        // Generate a unique file name
+        const fileExt = selectedFile.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = fileName
+
+        console.log('Uploading to:', filePath)
+
+        // Upload file to Supabase storage
+        const { data, error } = await supabase.storage
+          .from('csv-files')
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (error) {
+          console.error('Upload error:', error)
+          toast.error(`Failed to upload file: ${error.message}`)
+          setIsLoading(false)
+          setIsUploading(false)
+          return
+        }
+
+        console.log('Upload successful:', data)
+
+        // Get the public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('csv-files')
+          .getPublicUrl(data.path)
+
+        csvUrl = publicUrl
+        console.log('Public URL:', publicUrl)
+        toast.success(`File uploaded successfully! ${selectedFile.name}`)
+
+      } catch (error) {
+        console.error('Upload error (catch):', error)
+        toast.error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        setIsLoading(false)
+        setIsUploading(false)
+        return
+      } finally {
+        setIsUploading(false)
+      }
+    }
+
+    // Extract the prompt text from the message
+    const promptText = message.text || ''
+
+    // Store data in sessionStorage for the dashboard
+    sessionStorage.setItem('dashboardData', JSON.stringify({
+      prompt: promptText,
+      csvUrl: csvUrl,
+      timestamp: Date.now()
+    }))
 
     // Show loading screen for 5 seconds, then navigate to dashboard
     setTimeout(() => {
-      router.push("/dashboard")
+      router.push('/dashboard')
     }, 5000)
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate that it's a CSV file
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      toast.error("Please upload a CSV file")
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    setSelectedFile(file)
+    toast.success(`${file.name} ready to upload`)
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   return (
@@ -56,6 +149,15 @@ export default function Home() {
           WebkitMaskImage: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)`
         }}
       ></div>
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
 
       {/* Centered Content */}
       <div className="relative z-10 w-full max-w-3xl mx-auto px-6">
@@ -76,6 +178,18 @@ export default function Home() {
 
             {/* Input Area */}
             <div className="space-y-2">
+              {selectedFile && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-accent/50 rounded-lg border border-border">
+                  <FileText className="size-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground flex-1">{selectedFile.name}</span>
+                  <button
+                    onClick={handleRemoveFile}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
               <PromptInput onSubmit={handleSubmit}>
                 <PromptInputBody>
                   <PromptInputTextarea
@@ -85,8 +199,16 @@ export default function Home() {
                 </PromptInputBody>
                 <PromptInputFooter>
                   <PromptInputTools>
-                    <PromptInputButton className="text-muted-foreground hover:text-foreground bg-transparent">
-                      <PaperclipIcon className="size-5" />
+                    <PromptInputButton
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-muted-foreground hover:text-foreground bg-transparent"
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <Loader2 className="size-5 animate-spin" />
+                      ) : (
+                        <PaperclipIcon className="size-5" />
+                      )}
                     </PromptInputButton>
                   </PromptInputTools>
                   <PromptInputSubmit className="bg-gradient-primary hover:brightness-90 rounded-xl">
