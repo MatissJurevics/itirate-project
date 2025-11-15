@@ -2,33 +2,6 @@ import { generateText } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { highchartsTools } from '@/lib/ai/highcharts-tools';
 import { savePreparedChart } from '@/lib/chart-persistence-tool';
-import { convertHighchartsToWidget, extractChartTypeFromToolName } from '@/lib/adapters/highcharts-to-widget';
-
-const SYSTEM_PROMPT = `You are a data visualization expert. 
-
-Your task:
-1. Choose the best chart type for the data
-2. Use the appropriate generate tool to create a chart
-3. Call savePreparedChart to save the configuration
-
-Available tools:
-- generateLineChart: For time series data
-- generateColumnChart/generateBarChart: For category comparisons  
-- generatePieChart: For proportions/percentages
-- generateScatterChart: For correlations
-- savePreparedChart: REQUIRED - saves the chart
-
-Data transformation:
-- For bar/line charts: transform [{category: "A", value: 100}] to categories=["A"] and data=[100]
-- For pie charts: transform to [{name: "A", y: 100}]
-
-WORKFLOW:
-1. First, use a generate tool to create the chart
-2. Then, IMMEDIATELY call savePreparedChart with the same chartOptions
-
-Example:
-- Call generateColumnChart with chartOptions
-- Then call savePreparedChart with the same chartOptions plus csvId, sqlQuery, chartType, userPrompt`;
 
 export async function POST(req: Request) {
   try {
@@ -40,6 +13,17 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const SYSTEM_PROMPT = `Create a chart from the provided data. Choose the most appropriate chart type based on the data structure and user request. 
+
+Available chart types:
+- generateLineChart: For time series
+- generateColumnChart: For category comparisons
+- generateBarChart: For horizontal categories  
+- generatePieChart: For proportions
+- generateScatterChart: For correlations
+
+After creating the chart, save it using savePreparedChart.`;
 
     // Limit data sample for LLM to avoid token limits
     const dataSample = sqlResults.slice(0, 10);
@@ -66,46 +50,52 @@ ${JSON.stringify(dataSample, null, 2)}
 Please analyze this data and create an appropriate chart visualization. Consider the user's intent and the nature of the data to choose the best chart type.
 `;
 
+    // Use only essential chart tools to avoid overwhelming the AI
+    const essentialTools = {
+      generateLineChart: highchartsTools.generateLineChart,
+      generateColumnChart: highchartsTools.generateColumnChart,
+      generateBarChart: highchartsTools.generateBarChart,
+      generatePieChart: highchartsTools.generatePieChart,
+      generateScatterChart: highchartsTools.generateScatterChart,
+      savePreparedChart
+    };
+    
+    console.log('🔧 Available tools:', Object.keys(essentialTools));
+    
     const result = await generateText({
       model: anthropic('claude-3-haiku-20240307'),
       system: SYSTEM_PROMPT,
       prompt,
-      tools: {
-        ...highchartsTools,
-        savePreparedChart
-      }
+      tools: essentialTools,
+      maxToolRoundtrips: 3
     });
+    
+    console.log('🎯 AI Response:', result.text);
+    console.log('🔧 Tool calls:', result.toolResults?.length || 0);
 
-    // Extract chart configuration and convert to widget format
-    let chartId: string | null = null;
-    let highchartsConfig: any = null;
-    let chartToolName: string = '';
+    // Extract chart configuration
+    let chartConfig: any = null;
+    let chartType: string = 'unknown';
 
     if (result.toolResults) {
       for (const toolResult of result.toolResults) {
-        if (toolResult.toolName === 'savePreparedChart' && toolResult.output) {
-          const saveResult = toolResult.output as any;
-          chartId = saveResult.chartId;
-        }
         // Extract chart config from Highcharts tool results
         if (toolResult.toolName.startsWith('generate') && toolResult.output) {
-          highchartsConfig = toolResult.output;
-          chartToolName = toolResult.toolName;
+          chartConfig = toolResult.output;
+          // Determine chart type from tool name
+          if (toolResult.toolName.includes('Line')) chartType = 'line';
+          else if (toolResult.toolName.includes('Column')) chartType = 'column';
+          else if (toolResult.toolName.includes('Bar')) chartType = 'bar';
+          else if (toolResult.toolName.includes('Pie')) chartType = 'pie';
+          else if (toolResult.toolName.includes('Scatter')) chartType = 'scatter';
         }
       }
     }
 
-    // Convert Highcharts config to widget config if we have the chart data
-    let widgetConfig = null;
-    if (highchartsConfig) {
-      const chartType = extractChartTypeFromToolName(chartToolName);
-      widgetConfig = convertHighchartsToWidget(highchartsConfig, chartType);
-    }
-
-    // Return success if we have either chart ID (from save) or widget config (from generation)
-    if (!chartId && !widgetConfig) {
+    // Return error if we don't have chart configuration
+    if (!chartConfig) {
       return Response.json(
-        { 
+        {
           error: 'Failed to generate chart configuration',
           debug: {
             toolResultsCount: result.toolResults?.length || 0,
@@ -117,14 +107,48 @@ Please analyze this data and create an appropriate chart visualization. Consider
       );
     }
 
+    // Save the chart to database
+    let chartId: string | null = null;
+    let saveSuccess = false;
+    let saveError: string | null = null;
+    
+    try {
+      console.log('🔄 Saving chart to database...');
+      console.log('📊 Chart Type:', chartType);
+      console.log('📋 CSV ID:', csvId);
+      
+      const saveResult = await savePreparedChart.execute({
+        csvId,
+        sqlQuery,
+        chartOptions: chartConfig,
+        chartType,
+        userPrompt: userPrompt || 'Generate chart'
+      });
+      
+      console.log('💾 Save result:', JSON.stringify(saveResult, null, 2));
+      
+      if (saveResult && typeof saveResult === 'object' && 'success' in saveResult) {
+        saveSuccess = saveResult.success as boolean;
+        if (saveResult.success && 'chartId' in saveResult) {
+          chartId = saveResult.chartId as string;
+        } else if ('error' in saveResult) {
+          saveError = saveResult.error as string;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save chart:', error);
+      saveError = error instanceof Error ? error.message : 'Unknown save error';
+    }
+
     return Response.json({
       success: true,
       chartId: chartId || `generated-${Date.now()}`,
-      highchartsConfig,
-      widgetConfig,
-      chartType: extractChartTypeFromToolName(chartToolName),
+      chartConfig,
+      chartType,
       dataPreview: dataSample,
       totalRows,
+      saved: saveSuccess,
+      saveError,
       aiResponse: result.text
     });
 
