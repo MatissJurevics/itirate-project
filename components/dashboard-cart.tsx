@@ -2,13 +2,8 @@
 
 import * as React from "react"
 import Highcharts from "highcharts"
-import * as HighchartsReact from "@highcharts/react"
-import HighchartsPie from "highcharts/modules/variable-pie"
-
-// Ensure pie module is loaded for pies
-if (typeof Highcharts === "object" && typeof HighchartsPie === "function") {
-  HighchartsPie(Highcharts)
-}
+import { Chart as HighchartsReact } from "@highcharts/react"
+// Note: Pie charts are included in the main Highcharts package by default
 
 type ChartType = "line" | "bar" | "pie"
 
