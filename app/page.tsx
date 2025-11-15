@@ -2,8 +2,17 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from 'next/navigation'
-import ChatInput from "@/components/chat/ChatInput"
-import { Loader2 } from 'lucide-react'
+import { Loader2, PaperclipIcon, SendIcon } from 'lucide-react'
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputTextarea,
+  PromptInputTools,
+  PromptInputButton,
+  PromptInputSubmit,
+  type PromptInputMessage
+} from "@/components/ai-elements/prompt-input"
 
 export default function Home() {
   const router = useRouter()
@@ -25,7 +34,7 @@ export default function Home() {
     return () => window.removeEventListener("mousemove", handleMouseMove)
   }, [])
 
-  const handleSendMessage = async (_content: string) => {
+  const handleSubmit = async (_message: PromptInputMessage) => {
     setIsLoading(true)
 
     // Show loading screen for 5 seconds, then navigate to dashboard
@@ -67,7 +76,24 @@ export default function Home() {
 
             {/* Input Area */}
             <div className="space-y-2">
-              <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+              <PromptInput onSubmit={handleSubmit}>
+                <PromptInputBody>
+                  <PromptInputTextarea
+                    placeholder="What type of dashboard would you like?"
+                    className="min-h-[24px] max-h-[200px] text-gray-900 placeholder:text-gray-400"
+                  />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <PromptInputButton className="text-gray-500 hover:text-gray-900 bg-transparent">
+                      <PaperclipIcon className="size-5" />
+                    </PromptInputButton>
+                  </PromptInputTools>
+                  <PromptInputSubmit className="bg-gradient-primary hover:brightness-90 rounded-xl">
+                    <SendIcon className="size-4" />
+                  </PromptInputSubmit>
+                </PromptInputFooter>
+              </PromptInput>
             </div>
           </div>
         )}
