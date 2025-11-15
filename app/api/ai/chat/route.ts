@@ -1,5 +1,6 @@
 import { streamText } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 // import { highchartsTools } from '@/lib/ai/highcharts-tools';
 // import { dataTools } from '@/lib/ai/data-tools';
 
@@ -14,6 +15,26 @@ interface RequestBody {
   messages: Message[];
 }
 
+// Configure LM Studio provider
+const lmstudio = createOpenAICompatible({
+  name: 'lmstudio',
+  baseURL: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+});
+
+// Determine which model to use based on environment variable
+function getModel() {
+  const useLMStudio = process.env.USE_LMSTUDIO === 'true';
+  
+  if (useLMStudio) {
+    const modelId = process.env.LMSTUDIO_MODEL_ID || 'local-model';
+    console.log('Using LM Studio model:', modelId);
+    return lmstudio(modelId);
+  }
+  
+  console.log('Using Anthropic model: claude-3-haiku-20240307');
+  return anthropic('claude-3-haiku-20240307');
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.text();
@@ -21,7 +42,7 @@ export async function POST(req: Request) {
     const { messages }: RequestBody = JSON.parse(body);
 
     const result = streamText({
-      model: anthropic('claude-3-5-haiku-20241022'),
+      model: getModel(),
       messages,
       system: `You are an AI assistant specialized in data visualization and chart creation using Highcharts.
 
