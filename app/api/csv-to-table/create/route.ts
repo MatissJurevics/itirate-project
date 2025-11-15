@@ -31,15 +31,32 @@ export async function POST(request: NextRequest) {
     const columnDefinitions = columns.map((col: string) => {
       const sanitizedCol = col.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()
 
-      // Check first non-null value to infer type
-      const sampleValue = sampleData.find((r: any) => r[col] != null)?.[col]
+      // Check all sample values to infer type more accurately
+      const sampleValues = sampleData
+        .map((r: any) => r[col])
+        .filter((v: any) => v != null && v !== '' && v !== 'None' && v !== 'null' && v !== 'NULL' && v !== 'N/A' && v !== 'NA' && v !== '.' && v !== '-')
+
       let type = 'text' // default to text
 
-      if (sampleValue) {
-        if (!isNaN(Number(sampleValue))) {
-          type = sampleValue.includes('.') ? 'numeric' : 'integer'
-        } else if (!isNaN(Date.parse(sampleValue))) {
-          type = 'timestamp'
+      if (sampleValues.length > 0) {
+        // Check if ALL sample values are numeric (to avoid type mismatches)
+        const allNumeric = sampleValues.every((v: any) => {
+          const str = String(v).trim()
+          // Must be purely numeric (digits, optional decimal, optional leading minus)
+          return /^-?\d+(\.\d+)?$/.test(str)
+        })
+
+        if (allNumeric) {
+          const hasDecimal = sampleValues.some((v: any) => String(v).includes('.'))
+          type = hasDecimal ? 'numeric' : 'bigint'
+        } else {
+          // Check if all values match date format
+          const allDates = sampleValues.every((v: any) =>
+            /^\d{4}-\d{2}-\d{2}/.test(String(v))
+          )
+          if (allDates) {
+            type = 'timestamp'
+          }
         }
       }
 
