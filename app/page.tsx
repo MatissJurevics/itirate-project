@@ -102,9 +102,12 @@ export default function Home() {
     const promptText = message.text || ''
 
     // Store data in sessionStorage for the dashboard
+    const bucketFileName = csvUrl ? csvUrl.split('/').pop() || '' : ''
     sessionStorage.setItem('dashboardData', JSON.stringify({
       prompt: promptText,
       csvUrl: csvUrl,
+      fileName: selectedFile?.name || '',
+      bucketFileName: bucketFileName, // Use this for table name
       timestamp: Date.now()
     }))
 
