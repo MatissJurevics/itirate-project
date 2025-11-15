@@ -25,6 +25,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
+  const [mounted, setMounted] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([
     {
       id: "1",
@@ -35,6 +36,10 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
   ])
   const [inputValue, setInputValue] = React.useState("")
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -76,11 +81,15 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
     }
   }
 
+  if (!mounted) {
+    return null
+  }
+
   return (
     <div
       className={cn(
         "flex flex-col bg-background border-l shadow-lg transition-all duration-300 ease-in-out overflow-hidden shrink-0",
-        open ? "w-[24rem] opacity-100" : "w-0 opacity-0 pointer-events-none border-0"
+        open ? "w-[24rem] opacity-100" : "w-0 opacity-0 border-0"
       )}
       style={{
         height: "100%",
