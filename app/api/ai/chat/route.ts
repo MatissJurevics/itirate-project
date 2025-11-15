@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       model: getModel(),
       messages,
       tools,
-      stopWhen: stepCountIs(5), // Allows: query inspection, data query, evaluation, optional refinement, response
+      stopWhen: stepCountIs(7), // Allows: query inspection, data query, evaluation, optional refinement, chart generation, response
       onStepFinish: ({ text, toolCalls, toolResults, finishReason, usage }) => {
         console.log('\n' + '='.repeat(80));
         console.log(`📊 STEP FINISHED - Reason: ${finishReason}`);
@@ -150,6 +150,7 @@ IMPORTANT - Data Sampling:
 Available Tools:
 - execute_sql: Execute SELECT queries against the CSV data table (returns SQL diff showing what changed)
 - evaluate_results: REQUIRED after every query - checks for missing filters and validates results
+- generate_chart: Create a visualization from your SQL results (call AFTER evaluate_results returns satisfied=true)
 
 Query Guidelines:
 - Only SELECT queries allowed (no INSERT, UPDATE, DELETE, DROP, etc.)
@@ -212,14 +213,25 @@ WORKFLOW:
 1. User asks a question about the data
 2. You immediately call execute_sql with the appropriate query (DO NOT execute the same query twice!)
 3. You receive and interpret the results
-4. ALWAYS present the results to the user in your response
+4. Call evaluate_results to assess if the results meet the user's needs
 5. If the diff shows critical changes (lost filters), call execute_sql again with filters restored
+6. Once evaluate_results returns satisfied=true AND the user's request involves visualization/trends/charts:
+   - Call generate_chart with the user's visualization intent
+   - The chart will be automatically created and saved
+7. ALWAYS present the results (and chart info if generated) to the user in your response
+
+CHART GENERATION GUIDELINES:
+- Generate charts when users ask to "show", "visualize", "plot", "graph", or "chart" data
+- Also generate charts for trend analysis, comparisons, or distribution questions
+- The generate_chart tool will automatically select the best chart type
+- You can suggest a chart type based on the data structure (line for time series, column for categories, etc.)
 
 IMPORTANT RESPONSE RULES:
 - After tool execution, ALWAYS provide a natural language response to the user
 - Never end on a tool call - always follow up with text explaining the results
 - Check the SQL diff for every query to ensure filters weren't accidentally dropped
 - If you see "No changes - query is identical", DO NOT execute again
+- When a chart is generated, inform the user of the chart type and ID
 
 Remember: Execute tools immediately. Don't just explain what you would do - actually do it!`
         : `You are an AI assistant specialized in data visualization and chart creation using Highcharts.

@@ -5,60 +5,64 @@
 
 export { highchartsTools } from './highcharts-tools';
 export { dataTools } from './data-tools';
-
-// Re-export specific tools for convenience
-export const {
-  generateChartConfig,
-  suggestChartType,
-} = highchartsTools;
-
-export const {
-  processData,
-  analyzeDataStructure,
-  validateDataForChart,
-} = dataTools;
+export { createSQLTools } from './sql-tools';
 
 // Combined tools object for easy import
-export const allTools = {
-  ...highchartsTools,
-  ...dataTools,
+export const allChartTools = {
+  // Re-export from highchartsTools
 };
 
 /**
  * Tool categories for organized access
  */
 export const toolCategories = {
-  charts: highchartsTools,
-  data: dataTools,
+  charts: 'highchartsTools',
+  data: 'dataTools',
+  sql: 'sqlTools',
 } as const;
 
 /**
  * Tool metadata for documentation and UI generation
  */
 export const toolMetadata = {
-  generateChartConfig: {
+  generateLineChart: {
     category: 'charts',
-    description: 'Generate complete Highcharts configuration',
-    tags: ['charts', 'visualization', 'highcharts'],
+    description: 'Generate line chart configuration',
+    tags: ['charts', 'visualization', 'highcharts', 'time-series'],
   },
-  suggestChartType: {
-    category: 'charts', 
-    description: 'Suggest optimal chart type for data',
-    tags: ['charts', 'recommendations', 'analysis'],
+  generateColumnChart: {
+    category: 'charts',
+    description: 'Generate column chart configuration',
+    tags: ['charts', 'visualization', 'highcharts', 'comparison'],
   },
-  processData: {
-    category: 'data',
-    description: 'Transform and process raw data',
-    tags: ['data', 'transformation', 'processing'],
+  generateBarChart: {
+    category: 'charts',
+    description: 'Generate bar chart configuration',
+    tags: ['charts', 'visualization', 'highcharts', 'comparison'],
   },
-  analyzeDataStructure: {
-    category: 'data',
-    description: 'Analyze data structure and suggest visualizations',
-    tags: ['data', 'analysis', 'structure'],
+  generatePieChart: {
+    category: 'charts',
+    description: 'Generate pie chart configuration',
+    tags: ['charts', 'visualization', 'highcharts', 'proportions'],
   },
-  validateDataForChart: {
-    category: 'data',
-    description: 'Validate data compatibility with chart types', 
-    tags: ['data', 'validation', 'compatibility'],
+  generateScatterChart: {
+    category: 'charts',
+    description: 'Generate scatter chart configuration',
+    tags: ['charts', 'visualization', 'highcharts', 'correlation'],
+  },
+  execute_sql: {
+    category: 'sql',
+    description: 'Execute SQL queries against CSV data',
+    tags: ['sql', 'data', 'query'],
+  },
+  evaluate_results: {
+    category: 'sql',
+    description: 'Evaluate if SQL results satisfy the query',
+    tags: ['sql', 'validation', 'assessment'],
+  },
+  generate_chart: {
+    category: 'sql',
+    description: 'Generate chart from SQL results',
+    tags: ['sql', 'charts', 'visualization'],
   },
 } as const;

@@ -8,7 +8,6 @@ const pool = new Pool({
   min: 2,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 10000,
-  acquireTimeoutMillis: 15000,
   statement_timeout: 30000,
   query_timeout: 30000,
 });
