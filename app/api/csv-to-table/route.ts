@@ -74,9 +74,8 @@ export async function POST(request: NextRequest) {
       CREATE SCHEMA IF NOT EXISTS csv_to_table;
 
       CREATE TABLE IF NOT EXISTS csv_to_table."${tableName}" (
-        id SERIAL PRIMARY KEY,
-        ${columnDefinitions.join(',\n        ')},
-        created_at TIMESTAMP DEFAULT NOW()
+        internal_database_id SERIAL PRIMARY KEY,
+        ${columnDefinitions.join(',\n        ')}
       );
     `
 
