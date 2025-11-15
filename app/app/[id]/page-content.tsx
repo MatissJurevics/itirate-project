@@ -39,30 +39,79 @@ export function PageContent({ id }: PageContentProps) {
   const [isTranscriptOpen, setIsTranscriptOpen] = React.useState(false)
   const [dashboard, setDashboard] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
+  const [isMounted, setIsMounted] = React.useState(false)
   const audioRef = React.useRef<HTMLAudioElement>(null)
 
   React.useEffect(() => {
-    const fetchDashboard = async () => {
-      setLoading(true)
-      const supabase = createClient();
-      
-      const { data, error } = await supabase
-        .from("dashboards")
-        .select("*")
-        .eq("id", id)
-        .single();
+    setIsMounted(true)
+  }, [])
 
-      if (error) {
-        console.error("Failed to fetch dashboard:", error);
-        setDashboard(null)
-      } else {
+  React.useEffect(() => {
+    const loadDashboard = async () => {
+      // Check localStorage FIRST before setting loading state
+      const storageKey = `dashboard_${id}`
+      const cachedData = localStorage.getItem(storageKey)
+      
+      if (cachedData) {
+        try {
+          const parsedData = JSON.parse(cachedData)
+          if (parsedData && parsedData.id === id) {
+            // Normalize widgets if needed (optimize this)
+            const normalizedData = {
+              ...parsedData,
+              widgets: (parsedData.widgets || []).map((widget: any) => {
+                const isApiResponseFormat = 
+                  (widget.chartId !== undefined || widget.success !== undefined) ||
+                  (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
+                  (widget.dataPreview !== undefined && widget.chartType !== undefined)
+
+                if (isApiResponseFormat) {
+                  return adaptChartData(widget as ChartApiResponse)
+                }
+                return widget
+              })
+            }
+            // Set data immediately without loading state
+            setDashboard(normalizedData)
+            setLoading(false)
+            
+            // Fetch from Supabase in the background to update cache
+            fetchAndUpdateDashboard(storageKey)
+            return
+          }
+        } catch (error) {
+          console.warn("Failed to parse cached dashboard data:", error)
+          localStorage.removeItem(storageKey)
+        }
+      }
+      
+      // Only set loading if we don't have cache
+      setLoading(true)
+      await fetchAndUpdateDashboard(storageKey)
+    }
+
+    const fetchAndUpdateDashboard = async (storageKey: string) => {
+      try {
+        const supabase = createClient();
+        
+        const { data, error } = await supabase
+          .from("dashboards")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (error) {
+          console.error("Failed to fetch dashboard:", error);
+          setDashboard(null)
+          setLoading(false)
+          return
+        }
+
         // Normalize widgets using the adapter if they're in API response format
         const normalizedData = {
           ...data,
           widgets: (data.widgets || []).map((widget: any) => {
             // Check if widget is in API response format
-            // An API response has multiple top-level fields like chartId, success, chartType, widgetConfig, etc.
-            // A normalized widget typically only has widgetType, data, title, highchartsConfig, etc.
             const isApiResponseFormat = 
               (widget.chartId !== undefined || widget.success !== undefined) ||
               (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
@@ -77,12 +126,24 @@ export function PageContent({ id }: PageContentProps) {
             return widget
           })
         }
+        
+        // Store in localStorage
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(normalizedData))
+        } catch (storageError) {
+          console.warn("Failed to save dashboard to localStorage:", storageError)
+        }
+        
         setDashboard(normalizedData)
+      } catch (error) {
+        console.error("Error fetching dashboard:", error)
+        setDashboard(null)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
-    };
+    }
 
-    fetchDashboard();
+    loadDashboard()
   }, [id]);
   
   const audioUrl = dashboard?.audio || null
@@ -102,7 +163,7 @@ export function PageContent({ id }: PageContentProps) {
         )}
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
           <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            {loading ? (
+            {loading && !dashboard ? (
               <>
                 <div className="bg-muted/50 aspect-video rounded-xl animate-pulse" />
                 <div className="bg-muted/50 aspect-video rounded-xl animate-pulse" />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from 'next/navigation'
-import { Loader2, PaperclipIcon, SendIcon } from 'lucide-react'
+import { Loader2, PaperclipIcon, SendIcon, X, FileText } from 'lucide-react'
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -27,9 +27,11 @@ export default function Home() {
     x: 0,
     y: 0
   })
+  const [isMounted, setIsMounted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setIsMounted(true)
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({
         x: e.clientX,
@@ -191,15 +193,6 @@ export default function Home() {
       {/* Dot Matrix Background */}
       <div className="absolute h-full w-full bg-[radial-gradient(rgb(223_214_201)_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
 
-      {/* Cursor Reactive Overlay */}
-      <div
-        className="absolute h-full w-full bg-[radial-gradient(rgb(202_232_203)_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none transition-opacity duration-150"
-        style={{
-          maskImage: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)`,
-          WebkitMaskImage: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)`
-        }}
-      ></div>
-
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
@@ -208,6 +201,17 @@ export default function Home() {
         className="hidden"
         onChange={handleFileSelect}
       />
+
+      {/* Cursor Reactive Overlay */}
+      <div
+        className="absolute h-full w-full bg-[radial-gradient(rgb(202_232_203)_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none transition-opacity duration-150"
+        style={{
+          opacity: isMounted ? 1 : 0,
+          maskImage: isMounted ? `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)` : undefined,
+          WebkitMaskImage: isMounted ? `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)` : undefined
+        }}
+        suppressHydrationWarning
+      ></div>
 
       {/* Centered Content */}
       <div className="relative z-10 w-full max-w-3xl mx-auto px-6">
