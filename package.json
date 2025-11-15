@@ -12,6 +12,7 @@
     "@ai-sdk/ui-utils": "^1.2.11",
     "@elevenlabs/elevenlabs-js": "^2.24.1",
     "@ai-sdk/anthropic": "^1.0.24",
+    "@ai-sdk/anthropic": "^2.0.44",
     "@ai-sdk/openai": "^2.0.67",
     "@ai-sdk/ui-utils": "^1.2.11",
     "@highcharts/react": "^4.1.0",

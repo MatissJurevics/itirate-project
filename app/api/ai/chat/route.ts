@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const { messages }: RequestBody = JSON.parse(body);
 
     const result = streamText({
-      model: anthropic('claude-3-haiku-20240307'),
+      model: anthropic('claude-3-5-haiku-20241022'),
       messages,
       system: `You are an AI assistant specialized in data visualization and chart creation using Highcharts.
 
