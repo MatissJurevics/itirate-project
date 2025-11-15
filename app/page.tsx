@@ -13,20 +13,19 @@ import {
   PromptInputSubmit,
   type PromptInputMessage
 } from "@/components/ai-elements/prompt-input"
-import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import Papa from 'papaparse'
 
 export default function Home() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
+  const [loadingStatus, setLoadingStatus] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mousePosition, setMousePosition] = useState({
     x: 0,
     y: 0
   })
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -42,74 +41,116 @@ export default function Home() {
 
   const handleSubmit = async (message: PromptInputMessage) => {
     setIsLoading(true)
+    setLoadingStatus('Preparing...')
 
-    let csvUrl = ''
+    const promptText = message.text || ''
+    let tableName = ''
+    let rowCount = 0
 
-    // Upload file if one is selected
+    // Process CSV file if one is selected
     if (selectedFile) {
-      setIsUploading(true)
       try {
-        console.log('Starting file upload...', selectedFile.name, selectedFile.type, selectedFile.size)
+        setLoadingStatus('Parsing CSV file...')
+        console.log('Parsing CSV file...', selectedFile.name, selectedFile.size)
 
-        // Generate a unique file name
-        const fileExt = selectedFile.name.split('.').pop()
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = fileName
+        // Generate unique table name
+        tableName = `csv_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
-        console.log('Uploading to:', filePath)
-
-        // Upload file to Supabase storage
-        const { data, error } = await supabase.storage
-          .from('csv-files')
-          .upload(filePath, selectedFile, {
-            cacheControl: '3600',
-            upsert: false
+        // Parse CSV with streaming for large files
+        const parseResult = await new Promise<Papa.ParseResult<Record<string, any>>>((resolve, reject) => {
+          Papa.parse(selectedFile, {
+            header: true,
+            skipEmptyLines: true,
+            complete: resolve,
+            error: reject,
           })
+        })
 
-        if (error) {
-          console.error('Upload error:', error)
-          toast.error(`Failed to upload file: ${error.message}`)
+        if (parseResult.errors.length > 0) {
+          console.error('CSV parsing errors:', parseResult.errors)
+          toast.error(`CSV parsing error: ${parseResult.errors[0].message}`)
           setIsLoading(false)
-          setIsUploading(false)
           return
         }
 
-        console.log('Upload successful:', data)
+        const csvData = parseResult.data
+        const csvColumns = parseResult.meta.fields || []
+        rowCount = csvData.length
 
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('csv-files')
-          .getPublicUrl(data.path)
+        console.log(`Parsed ${rowCount} rows with columns:`, csvColumns)
+        toast.success(`Parsed ${rowCount} rows from ${selectedFile.name}`)
 
-        csvUrl = publicUrl
-        console.log('Public URL:', publicUrl)
-        toast.success(`File uploaded successfully! ${selectedFile.name}`)
+        // Step 1: Create the table with sample data for type inference
+        setLoadingStatus('Creating database table...')
+        const sampleData = csvData.slice(0, 10) // First 10 rows for type inference
+
+        const createResponse = await fetch('/api/csv-to-table/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tableName,
+            columns: csvColumns,
+            sampleData
+          })
+        })
+
+        const createResult = await createResponse.json()
+        if (!createResponse.ok) {
+          throw new Error(createResult.error || 'Failed to create table')
+        }
+
+        toast.success(`Table "${tableName}" created`)
+
+        // Step 2: Insert data in chunks
+        const chunkSize = 1000 // Rows per chunk
+        const totalChunks = Math.ceil(csvData.length / chunkSize)
+
+        for (let i = 0; i < csvData.length; i += chunkSize) {
+          const chunkIndex = Math.floor(i / chunkSize) + 1
+          setLoadingStatus(`Inserting data... (${chunkIndex}/${totalChunks})`)
+
+          const chunk = csvData.slice(i, i + chunkSize)
+
+          const insertResponse = await fetch('/api/csv-to-table/insert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tableName,
+              rows: chunk,
+              columns: csvColumns
+            })
+          })
+
+          const insertResult = await insertResponse.json()
+          if (!insertResponse.ok) {
+            throw new Error(insertResult.error || 'Failed to insert data')
+          }
+
+          console.log(`Inserted chunk ${chunkIndex}/${totalChunks}`)
+        }
+
+        toast.success(`Inserted ${rowCount} rows into ${tableName}`)
 
       } catch (error) {
-        console.error('Upload error (catch):', error)
-        toast.error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        console.error('CSV processing error:', error)
+        toast.error(`Failed to process CSV: ${error instanceof Error ? error.message : 'Unknown error'}`)
         setIsLoading(false)
-        setIsUploading(false)
+        setLoadingStatus('')
         return
-      } finally {
-        setIsUploading(false)
       }
     }
 
-    // Extract the prompt text from the message
-    const promptText = message.text || ''
+    setLoadingStatus('Redirecting to dashboard...')
 
-    // Store data in sessionStorage for the dashboard
-    sessionStorage.setItem('dashboardData', JSON.stringify({
+    // Navigate to dashboard with params
+    const params = new URLSearchParams({
       prompt: promptText,
-      csvUrl: csvUrl,
-      timestamp: Date.now()
-    }))
+      ...(tableName && { table: tableName }),
+      ...(selectedFile && { fileName: selectedFile.name }),
+      ...(rowCount > 0 && { rows: rowCount.toString() })
+    })
 
-    // Show loading screen for 5 seconds, then navigate to dashboard
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 5000)
+    router.push(`/dashboard?${params.toString()}`)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,7 +205,7 @@ export default function Home() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-6 animate-fade-in">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg text-muted-foreground">Generating your dashboard...</p>
+            <p className="text-lg text-muted-foreground">{loadingStatus || 'Processing...'}</p>
           </div>
         ) : (
           <div className="space-y-8">
@@ -202,13 +243,9 @@ export default function Home() {
                     <PromptInputButton
                       onClick={() => fileInputRef.current?.click()}
                       className="text-muted-foreground hover:text-foreground bg-transparent"
-                      disabled={isUploading}
+                      disabled={isLoading}
                     >
-                      {isUploading ? (
-                        <Loader2 className="size-5 animate-spin" />
-                      ) : (
-                        <PaperclipIcon className="size-5" />
-                      )}
+                      <PaperclipIcon className="size-5" />
                     </PromptInputButton>
                   </PromptInputTools>
                   <PromptInputSubmit className="bg-gradient-primary hover:brightness-90 rounded-xl">
