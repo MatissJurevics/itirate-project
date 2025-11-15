@@ -1,51 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parse } from 'csv-parse/sync'
 import { createClient } from '@/lib/supabase/server'
+
+const formatSupabaseError = (error: any) => {
+  console.log(error)
+  if (!error) return 'Unknown Supabase error'
+  if (typeof error === 'string') return error
+  if (error.message) return error.message
+  if (error.details) return error.details
+  if (error.hint) return error.hint
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { csvUrl, fileName } = await request.json()
+    const { csvData, csvColumns, tableName } = await request.json()
 
-    if (!csvUrl || !fileName) {
+    if (!csvData || !csvColumns || !tableName) {
       return NextResponse.json(
-        { error: 'Missing csvUrl or fileName' },
+        { error: 'Missing csvData, csvColumns, or tableName' },
         { status: 400 }
       )
     }
 
-    // Fetch the CSV file from the URL
-    const response = await fetch(csvUrl)
-    if (!response.ok) {
+    if (!Array.isArray(csvData) || csvData.length === 0) {
       return NextResponse.json(
-        { error: 'Failed to fetch CSV file' },
+        { error: 'CSV data is empty' },
         { status: 400 }
       )
     }
 
-    const csvText = await response.text()
-
-    // Parse CSV
-    const records = parse(csvText, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-    }) as Record<string, any>[]
-
-    if (!records || records.length === 0) {
+    if (!Array.isArray(csvColumns) || csvColumns.length === 0) {
       return NextResponse.json(
-        { error: 'CSV file is empty' },
+        { error: 'CSV columns are empty' },
         { status: 400 }
       )
     }
 
-    // Extract column names and infer types from first row
-    const columns = Object.keys(records[0])
-
-    // Sanitize table name (remove extension, special chars, use lowercase)
-    const tableName = fileName
-      .replace(/\.csv$/i, '')
-      .replace(/[^a-zA-Z0-9_]/g, '_')
-      .toLowerCase()
+    const records = csvData as Record<string, any>[]
+    const columns = csvColumns as string[]
 
     const supabase = await createClient()
 
@@ -91,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (createError) {
       console.error('Error creating table:', createError)
       return NextResponse.json(
-        { error: `Failed to create table: ${createError.message}. Please create the RPC function first.` },
+        { error: `Failed to create table: ${formatSupabaseError(createError)}. Please create the RPC function first.` },
         { status: 500 }
       )
     }
@@ -126,7 +122,7 @@ export async function POST(request: NextRequest) {
         const isSchemaCacheError = insertError.message?.includes('schema cache')
         if (!isSchemaCacheError || attempt === maxRetries - 1) {
           console.error('Error inserting data batch:', insertError)
-          throw new Error(`Failed to insert data: ${insertError.message}`)
+          throw new Error(`Failed to insert data: ${formatSupabaseError(insertError)} (batch ${attempt + 1})`)
         }
 
         await new Promise(resolve => setTimeout(resolve, retryDelayMs * (attempt + 1)))
