@@ -1,29 +1,35 @@
 import { generateText, stepCountIs } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { highchartsTools } from '@/lib/ai/highcharts-tools';
-import { savePreparedChart } from '@/lib/chart-persistence-tool';
+import { saveDashboardWidget } from '@/lib/dashboard-widget-tool';
 
 export async function POST(req: Request) {
   try {
-    const { sqlQuery, sqlResults, userPrompt, csvId } = await req.json();
+    const { sqlQuery, sqlResults, userPrompt, dashboardId, title } = await req.json();
 
-    if (!sqlQuery || !sqlResults || !csvId) {
+    if (!sqlQuery || !sqlResults || !dashboardId) {
       return Response.json(
-        { error: 'Missing required fields: sqlQuery, sqlResults, csvId' },
+        { error: 'Missing required fields: sqlQuery, sqlResults, dashboardId' },
         { status: 400 }
       );
     }
 
-    const SYSTEM_PROMPT = `Create a chart from the provided data. Choose the most appropriate chart type based on the data structure and user request. 
+    const SYSTEM_PROMPT = `You are a data visualization expert. You must ALWAYS perform both steps:
 
-Available chart types:
-- generateLineChart: For time series
-- generateColumnChart: For category comparisons
-- generateBarChart: For horizontal categories  
-- generatePieChart: For proportions
-- generateScatterChart: For correlations
+STEP 1: Generate the chart configuration
+STEP 2: Save it to the dashboard  
 
-After creating the chart, save it using savePreparedChart.`;
+For this category data, you MUST:
+1. Call generateColumnChart to create the chart
+2. IMMEDIATELY after, call saveDashboardWidget to save it
+
+You cannot complete the task without calling BOTH tools. The user needs the chart saved to their dashboard.
+
+Available tools:
+- generateColumnChart: Perfect for this category data
+- saveDashboardWidget: Required to save the chart
+
+CRITICAL: After generating the chart, you MUST call saveDashboardWidget or the user's request will be incomplete!`;
 
     // Limit data sample for LLM to avoid token limits
     const dataSample = sqlResults.slice(0, 10);
@@ -47,7 +53,18 @@ ${JSON.stringify(dataSample, null, 2)}
 - Total rows: ${totalRows}
 - Columns: ${dataSample.length > 0 ? Object.keys(dataSample[0]).join(', ') : 'No data'}
 
-Please analyze this data and create an appropriate chart visualization. Consider the user's intent and the nature of the data to choose the best chart type.
+REQUIRED ACTION: Execute these 2 tool calls in sequence:
+
+1. generateColumnChart with the data above
+2. saveDashboardWidget with:
+   - dashboardId: "${dashboardId}"
+   - sqlQuery: "${sqlQuery}"
+   - chartOptions: (the result from step 1)
+   - chartType: "column"  
+   - userPrompt: "${userPrompt}"
+   - title: "${title || 'Chart'}"
+
+You MUST call both tools to complete this request!
 `;
 
     // Use only essential chart tools to avoid overwhelming the AI
@@ -57,7 +74,7 @@ Please analyze this data and create an appropriate chart visualization. Consider
       generateBarChart: highchartsTools.generateBarChart,
       generatePieChart: highchartsTools.generatePieChart,
       generateScatterChart: highchartsTools.generateScatterChart,
-      savePreparedChart
+      saveDashboardWidget: saveDashboardWidget
     };
     
     console.log('🔧 Available tools:', Object.keys(essentialTools));
@@ -67,15 +84,19 @@ Please analyze this data and create an appropriate chart visualization. Consider
       system: SYSTEM_PROMPT,
       prompt,
       tools: essentialTools,
+      toolChoice: 'required',
       stopWhen: stepCountIs(3)
     });
     
     console.log('🎯 AI Response:', result.text);
     console.log('🔧 Tool calls:', result.toolResults?.length || 0);
+    console.log('🔧 Tool names called:', result.toolResults?.map(tr => tr.toolName) || []);
 
-    // Extract chart configuration
+    // Extract chart configuration and dashboard save results
     let chartConfig: any = null;
     let chartType: string = 'unknown';
+    let widgetId: string | null = null;
+    let saveSuccess = false;
 
     if (result.toolResults) {
       for (const toolResult of result.toolResults) {
@@ -88,6 +109,14 @@ Please analyze this data and create an appropriate chart visualization. Consider
           else if (toolResult.toolName.includes('Bar')) chartType = 'bar';
           else if (toolResult.toolName.includes('Pie')) chartType = 'pie';
           else if (toolResult.toolName.includes('Scatter')) chartType = 'scatter';
+        }
+        // Extract save result from dashboard widget tool
+        if (toolResult.toolName === 'saveDashboardWidget' && toolResult.output) {
+          const saveResult = toolResult.output as any;
+          if (saveResult.success) {
+            saveSuccess = true;
+            widgetId = saveResult.widgetId;
+          }
         }
       }
     }
@@ -107,52 +136,18 @@ Please analyze this data and create an appropriate chart visualization. Consider
       );
     }
 
-    // Save the chart to database
-    let chartId: string | null = null;
-    let saveSuccess = false;
-    let saveError: string | null = null;
-    
-    try {
-      console.log('🔄 Saving chart to database...');
-      console.log('📊 Chart Type:', chartType);
-      console.log('📋 CSV ID:', csvId);
-
-      if (!savePreparedChart.execute) {
-        throw new Error('savePreparedChart.execute is not defined');
-      }
-
-      const saveResult = await savePreparedChart.execute({
-        csvId,
-        sqlQuery,
-        chartOptions: chartConfig,
-        chartType,
-        userPrompt: userPrompt || 'Generate chart'
-      }, { toolCallId: 'direct-save', messages: [], abortSignal: undefined });
-      
-      console.log('💾 Save result:', JSON.stringify(saveResult, null, 2));
-      
-      if (saveResult && typeof saveResult === 'object' && 'success' in saveResult) {
-        saveSuccess = saveResult.success as boolean;
-        if (saveResult.success && 'chartId' in saveResult) {
-          chartId = saveResult.chartId as string;
-        } else if ('error' in saveResult) {
-          saveError = saveResult.error as string;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save chart:', error);
-      saveError = error instanceof Error ? error.message : 'Unknown save error';
-    }
+    // Dashboard saving is now handled by the AI using the saveDashboardWidget tool
 
     return Response.json({
       success: true,
-      chartId: chartId || `generated-${Date.now()}`,
+      widgetId: widgetId || `widget-${Date.now()}`,
+      dashboardId,
       chartConfig,
       chartType,
       dataPreview: dataSample,
       totalRows,
       saved: saveSuccess,
-      saveError,
+      saveError: saveSuccess ? null : 'Dashboard save failed',
       aiResponse: result.text
     });
 
