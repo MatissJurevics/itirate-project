@@ -7,7 +7,7 @@ import { PageTitle } from "@/components/page-title"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
-import { DashboardChart } from "@/components/dashboard-chart"
+import { SortableWidget } from "@/components/sortable-widget"
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,28 @@ import { FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
 import type { ChartType } from "@/lib/charts/types"
 import { useSidebar } from "@/components/ui/sidebar"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable"
+import { nanoid } from "nanoid"
 
 interface PageContentProps {
   id: string
 }
 
 interface Widget {
+  id: string
   data?: any;
   title?: string;
   type?: ChartType;
@@ -55,6 +71,78 @@ export function PageContent({ id }: PageContentProps) {
   const { state: sidebarState } = useSidebar()
   const audioRef = React.useRef<HTMLAudioElement>(null)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  )
+
+  const ensureWidgetIds = React.useCallback((widgets: any[]): Widget[] => {
+    return widgets.map((widget: any) => {
+      if (widget.id) {
+        return widget as Widget
+      }
+      return {
+        ...widget,
+        id: widget.chartId || nanoid(),
+      } as Widget
+    })
+  }, [])
+
+  const handleDragEnd = React.useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event
+
+      if (!over || active.id === over.id || !dashboard?.widgets) {
+        return
+      }
+
+      const oldIndex = dashboard.widgets.findIndex(
+        (w: Widget) => w.id === active.id
+      )
+      const newIndex = dashboard.widgets.findIndex(
+        (w: Widget) => w.id === over.id
+      )
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return
+      }
+
+      const reorderedWidgets = arrayMove(dashboard.widgets, oldIndex, newIndex)
+      const updatedDashboard = {
+        ...dashboard,
+        widgets: reorderedWidgets,
+      }
+
+      setDashboard(updatedDashboard)
+
+      const storageKey = `dashboard_${id}`
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updatedDashboard))
+      } catch (storageError) {
+        console.warn("Failed to save dashboard to localStorage:", storageError)
+      }
+
+      try {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("dashboards")
+          .update({ widgets: reorderedWidgets })
+          .eq("id", id)
+
+        if (error) {
+          console.error("Failed to persist widget order:", error)
+        }
+      } catch (error) {
+        console.error("Error persisting widget order:", error)
+      }
+    },
+    [dashboard, id]
+  )
+
   React.useEffect(() => {
     setIsMounted(true)
   }, [])
@@ -70,17 +158,19 @@ export function PageContent({ id }: PageContentProps) {
           if (parsedData && parsedData.id === id) {
             const normalizedData = {
               ...parsedData,
-              widgets: (parsedData.widgets || []).map((widget: any) => {
-                const isApiResponseFormat =
-                  (widget.chartId !== undefined || widget.success !== undefined) ||
-                  (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
-                  (widget.dataPreview !== undefined && widget.chartType !== undefined)
+              widgets: ensureWidgetIds(
+                (parsedData.widgets || []).map((widget: any) => {
+                  const isApiResponseFormat =
+                    (widget.chartId !== undefined || widget.success !== undefined) ||
+                    (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
+                    (widget.dataPreview !== undefined && widget.chartType !== undefined)
 
-                if (isApiResponseFormat) {
-                  return adaptChartData(widget as ChartApiResponse)
-                }
-                return widget
-              })
+                  if (isApiResponseFormat) {
+                    return adaptChartData(widget as ChartApiResponse)
+                  }
+                  return widget
+                })
+              ),
             }
             setDashboard(normalizedData)
             setLoading(false)
@@ -117,18 +207,20 @@ export function PageContent({ id }: PageContentProps) {
 
         const normalizedData = {
           ...data,
-          widgets: (data.widgets || []).map((widget: any) => {
-            const isApiResponseFormat =
-              (widget.chartId !== undefined || widget.success !== undefined) ||
-              (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
-              (widget.dataPreview !== undefined && widget.chartType !== undefined)
+          widgets: ensureWidgetIds(
+            (data.widgets || []).map((widget: any) => {
+              const isApiResponseFormat =
+                (widget.chartId !== undefined || widget.success !== undefined) ||
+                (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
+                (widget.dataPreview !== undefined && widget.chartType !== undefined)
 
-            if (isApiResponseFormat) {
-              return adaptChartData(widget as ChartApiResponse)
-            }
+              if (isApiResponseFormat) {
+                return adaptChartData(widget as ChartApiResponse)
+              }
 
-            return widget
-          })
+              return widget
+            })
+          ),
         }
 
         try {
@@ -211,36 +303,34 @@ export function PageContent({ id }: PageContentProps) {
           <PageTitle>{dashboard.title}</PageTitle>
         ) : null}
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          {loading ? (
-            <>
-              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
-              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
-              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
-            </>
-          ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
-            dashboard.widgets.map((widget: Widget, idx: number) => (
-              <div
-                className="bg-muted/50 aspect-video flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full"
-                key={idx}
-              >
-                <DashboardChart
-                  highchartsConfig={widget.highchartsConfig}
-                  type={widget.type || widget.widgetType}
-                  data={widget.data}
-                  title={widget.title}
-                  categories={widget.categories}
-                  mapData={widget.mapData}
-                  mapType={widget.mapType}
-                />
+        {loading ? (
+          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+            <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+            <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+            <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+          </div>
+        ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={dashboard.widgets.map((w: Widget) => w.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+                {dashboard.widgets.map((widget: Widget) => (
+                  <SortableWidget key={widget.id} widget={widget} />
+                ))}
               </div>
-            ))
-          ) : (
-            <div className="col-span-3 flex items-center justify-center text-muted-foreground">
-              No widgets to display.
-            </div>
-          )}
-        </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <div className="col-span-3 flex items-center justify-center text-muted-foreground">
+            No widgets to display.
+          </div>
+        )}
       </div>
     </div>
       {/* Re-open Audio Bar Button - Shows when collapsed */}
