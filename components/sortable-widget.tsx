@@ -61,6 +61,7 @@ export function SortableWidget({ widget }: SortableWidgetProps) {
         categories={widget.categories}
         mapData={widget.mapData}
         mapType={widget.mapType}
+        showCopyButton={true}
       />
     </div>
   )

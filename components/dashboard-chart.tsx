@@ -8,6 +8,8 @@ import { buildChartOptions } from "@/lib/charts/chart-factory"
 import { useChartHeight } from "@/hooks/use-chart-height"
 import { useMapData } from "@/hooks/use-map-data"
 import { useHighchartsChart } from "@/hooks/use-highcharts-chart"
+import { useCopyChartToClipboard } from "@/hooks/use-copy-chart"
+import { Copy, Check } from "lucide-react"
 
 interface DashboardChartProps {
   type?: ChartType
@@ -19,6 +21,7 @@ interface DashboardChartProps {
   mapType?: string
   projection?: string
   highchartsConfig?: Highcharts.Options
+  showCopyButton?: boolean
 }
 
 export function DashboardChart({
@@ -31,6 +34,7 @@ export function DashboardChart({
   mapType,
   projection,
   highchartsConfig,
+  showCopyButton = true,
 }: DashboardChartProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const chartHeight = useChartHeight(containerRef, height)
@@ -98,9 +102,46 @@ export function DashboardChart({
   }, [highchartsConfig, type, data, title, categories, chartHeight, mapData, mapType, projection, loadedMapData])
 
   // Create and manage chart instance
-  useHighchartsChart(containerRef, options, type, loadedMapData, highchartsConfig)
+  const chartInstanceRef = useHighchartsChart(containerRef, options, type, loadedMapData, highchartsConfig)
+  const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartInstanceRef)
+
+  const handleCopy = React.useCallback(async () => {
+    await copyChartToClipboard()
+  }, [copyChartToClipboard])
 
   return (
-    <div ref={containerRef} className="w-full h-full min-w-0 overflow-hidden" />
+    <div className="relative w-full h-full min-w-0">
+      <div ref={containerRef} className="w-full h-full min-w-0 overflow-hidden" />
+      {showCopyButton && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handleCopy()
+          }}
+          disabled={isCopying}
+          className="absolute top-2 right-2 z-[100] px-3 py-2 text-xs font-semibold rounded-lg bg-white dark:bg-gray-800 border-2 border-gray-400 dark:border-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-500 dark:hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg"
+          style={{ zIndex: 100, pointerEvents: 'auto' }}
+          title="Copy chart to clipboard"
+          aria-label="Copy chart to clipboard"
+        >
+          {isCopying ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              <span>Copying...</span>
+            </>
+          ) : copySuccess ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+              <span>Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      )}
+    </div>
   )
 }

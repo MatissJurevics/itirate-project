@@ -125,3 +125,6 @@ export const useHighchartsChart = (
   return chartInstanceRef
 }
 
+// Export chart instance type for use in other hooks
+export type ChartInstanceRef = React.RefObject<Highcharts.Chart | null>
+

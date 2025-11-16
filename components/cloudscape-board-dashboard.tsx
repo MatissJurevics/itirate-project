@@ -34,6 +34,7 @@ const MemoizedChartWrapper = React.memo(({ widget }: { widget: Widget }) => (
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      position: "relative",
     }}
   >
     <DashboardChart
@@ -45,6 +46,7 @@ const MemoizedChartWrapper = React.memo(({ widget }: { widget: Widget }) => (
       mapData={widget.mapData}
       mapType={widget.mapType}
       projection={widget.projection}
+      showCopyButton={true}
     />
   </div>
 ), (prevProps, nextProps) => {

@@ -57,6 +57,20 @@ export function initializeHighchartsModules(): Promise<void> {
       if (module && typeof module === "function") {
         (module as (highcharts: typeof Highcharts) => void)(Highcharts)
       }
+      return import("highcharts/modules/exporting")
+    })
+    .then((Exporting) => {
+      const module = (Exporting as any).default || Exporting
+      if (module && typeof module === "function") {
+        (module as (highcharts: typeof Highcharts) => void)(Highcharts)
+      }
+      return import("highcharts/modules/offline-exporting")
+    })
+    .then((OfflineExporting) => {
+      const module = (OfflineExporting as any).default || OfflineExporting
+      if (module && typeof module === "function") {
+        (module as (highcharts: typeof Highcharts) => void)(Highcharts)
+      }
     })
     .catch((error) => {
       console.warn("Failed to load Highcharts modules:", error)
