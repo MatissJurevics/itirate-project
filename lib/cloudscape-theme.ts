@@ -19,7 +19,7 @@ export const cloudscapeTheme: Theme = {
 
     // Colors - match the off-white background
     colorBackgroundLayoutMain: {
-      light: 'rgb(250, 250, 250)',
+      light: 'rgb(248, 251, 248)',
       dark: 'rgb(28, 43, 31)',
     },
 
