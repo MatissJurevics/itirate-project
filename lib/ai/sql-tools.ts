@@ -10,6 +10,7 @@ import { savePreparedChart } from '../chart-persistence-tool';
 export interface SQLToolContext {
   tableName: string;
   csvId: string;
+  dashboardId?: string;
 }
 
 // Track query history for diffing (per CSV ID)
@@ -232,7 +233,9 @@ ${JSON.stringify(dataSample, null, 2)}
 Please analyze this data and create an appropriate chart visualization.
 1. Choose the best chart type for this data
 2. Generate the complete Highcharts configuration
-3. Save the chart using savePreparedChart
+3. Save the chart using savePreparedChart with:
+   - csvId: "${context.csvId}"
+   ${context.dashboardId ? `- dashboardId: "${context.dashboardId}"` : ''}
 `;
 
       try {

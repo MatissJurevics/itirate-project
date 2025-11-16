@@ -46,12 +46,11 @@ interface Widget {
 export function PageContent({ id }: PageContentProps) {
   const searchParams = useSearchParams()
 
-  // New: values from the URL for the “direct /app” route
-  const initialPrompt = searchParams.get("prompt") || ""
-  const fileName = searchParams.get("fileName") || ""
-  const rowCount = searchParams.get("rows") || ""
-  // Assuming id is your csvId when you come from the upload / info flow
-  const csvId = id
+  // URL params are used as fallback during initial load
+  const urlPrompt = searchParams.get("prompt") || ""
+  const urlFileName = searchParams.get("fileName") || ""
+  const urlRowCount = searchParams.get("rows") || ""
+  const urlTableName = searchParams.get("table") || ""
 
   const [isChatOpen, setIsChatOpen] = React.useState(false)
   const [isTranscriptOpen, setIsTranscriptOpen] = React.useState(false)
@@ -251,7 +250,7 @@ export function PageContent({ id }: PageContentProps) {
                 <div>
                   <span className="text-muted-foreground">Table:</span>
                   <span className="ml-2 font-mono text-xs bg-muted px-2 py-1 rounded">
-                    csv_to_table.csv_{csvId}
+                    {csvTableName ? `csv_to_table.${csvTableName}` : 'N/A'}
                   </span>
                 </div>
               </div>
@@ -354,8 +353,9 @@ export function PageContent({ id }: PageContentProps) {
       <ChatSidebar
         open={isChatOpen}
         onOpenChange={setIsChatOpen}
-        csvId={csvId}
+        csvId={csvTableName}
         initialPrompt={initialPrompt}
+        dashboardId={id}
       />
     </div>
   )

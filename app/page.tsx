@@ -144,19 +144,42 @@ export default function Home() {
       }
     }
 
+    setLoadingStatus('Creating dashboard...')
+
+    // Create a dashboard entry in Supabase
+    let dashboardId = ''
+    try {
+      const dashboardResponse = await fetch('/api/dashboard/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: promptText || 'New Dashboard',
+          csvTableName: tableName,
+          fileName: selectedFile?.name || '',
+          rowCount: rowCount,
+          initialPrompt: promptText
+        })
+      })
+
+      const dashboardResult = await dashboardResponse.json()
+      if (!dashboardResponse.ok) {
+        throw new Error(dashboardResult.error || 'Failed to create dashboard')
+      }
+
+      dashboardId = dashboardResult.id
+      toast.success('Dashboard created')
+    } catch (error) {
+      console.error('Dashboard creation error:', error)
+      toast.error(`Failed to create dashboard: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setIsLoading(false)
+      setLoadingStatus('')
+      return
+    }
+
     setLoadingStatus('Redirecting to app...')
 
-    // Extract csvId from tableName (remove 'csv_' prefix)
-    const csvId = tableName.replace(/^csv_/, '')
-
-    // Navigate to app with csvId in route and prompt in query params
-    const params = new URLSearchParams({
-      prompt: promptText,
-      ...(selectedFile && { fileName: selectedFile.name }),
-      ...(rowCount > 0 && { rows: rowCount.toString() })
-    })
-
-    router.push(`/app/${csvId}?${params.toString()}`)
+    // Navigate to app with dashboard ID (all metadata is stored in database)
+    router.push(`/app/${dashboardId}`)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
