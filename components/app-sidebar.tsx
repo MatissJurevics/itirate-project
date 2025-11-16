@@ -32,6 +32,13 @@ interface SidebarData {
   navMain: NavMainItem[];
 }
 
+const truncateTitle = (title: string) => {
+  if (title.length <= 35) {
+    return title
+  }
+  return `${title.slice(0, 35)}...`
+}
+
 // This is sample data.
 const initialData: SidebarData = {
   navMain: [
@@ -118,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
                   <Link href={item.url} className="font-medium">
-                    {item.title}
+                    <span title={item.title}>{truncateTitle(item.title)}</span>
                   </Link>
                 </SidebarMenuButton>
                 {item.items?.length ? (
@@ -126,7 +133,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     {item.items.map((item) => (
                       <SidebarMenuSubItem key={item.title}>
                         <SidebarMenuSubButton asChild isActive={false}>
-                          <Link href={item.url}>{item.title}</Link>
+                          <Link href={item.url} title={item.title}>
+                            {truncateTitle(item.title)}
+                          </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
