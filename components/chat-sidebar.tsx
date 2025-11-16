@@ -258,12 +258,12 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         const cleanedContent = cleanMessageContent(fullContent)
         saveMessageToDb("assistant", cleanedContent)
 
-        // Check if a chart was generated (look for chart-related keywords in response)
-        const chartGenerated =
-          fullContent.includes("chart") &&
-          (fullContent.includes("generated") || fullContent.includes("created") || fullContent.includes("saved"))
+        // Check if a chart was generated or updated (look for chart/widget-related keywords in response)
+        const chartModified =
+          (fullContent.includes("chart") || fullContent.includes("widget") || fullContent.includes("Widget")) &&
+          (fullContent.includes("generated") || fullContent.includes("created") || fullContent.includes("saved") || fullContent.includes("updated") || fullContent.includes("Updated") || fullContent.includes("deleted") || fullContent.includes("Deleted"))
 
-        if (chartGenerated && onChartGenerated) {
+        if (chartModified && onChartGenerated) {
           // Small delay to ensure database write is complete
           setTimeout(() => {
             onChartGenerated()
