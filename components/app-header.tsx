@@ -21,6 +21,11 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ breadcrumbs = [], actions }: AppHeaderProps) {
+  const truncateLabel = (label: string, maxLength: number = 30) => {
+    if (label.length <= maxLength) return label
+    return label.substring(0, maxLength) + "..."
+  }
+
   return (
     <>
       <header className="flex h-16 shrink-0 w-full items-center gap-2 px-4">
@@ -38,11 +43,11 @@ export function AppHeader({ breadcrumbs = [], actions }: AppHeaderProps) {
                     {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
                     <BreadcrumbItem className={index === 0 ? "hidden md:block" : ""}>
                       {crumb.href ? (
-                        <BreadcrumbLink href={crumb.href}>
-                          {crumb.label}
+                        <BreadcrumbLink href={crumb.href} title={crumb.label}>
+                          {truncateLabel(crumb.label)}
                         </BreadcrumbLink>
                       ) : (
-                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                        <BreadcrumbPage title={crumb.label}>{truncateLabel(crumb.label)}</BreadcrumbPage>
                       )}
                     </BreadcrumbItem>
                   </div>

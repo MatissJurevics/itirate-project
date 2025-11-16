@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { LayoutDashboard, Plus } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 import {
@@ -30,16 +30,6 @@ interface Dashboard {
   url: string;
 }
 
-interface NavMainItem {
-  title: string;
-  url: string;
-  items: SidebarItem[];
-}
-
-interface SidebarData {
-  navMain: NavMainItem[];
-}
-
 const truncateTitle = (title: string) => {
   if (title.length <= 30) {
     return title
@@ -59,8 +49,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         const { data, error } = await supabase
           .from("dashboards")
-          .select("id, title, created_at")
-          .order("created_at", { ascending: false });
+          .select("id, title, created_at, updated_at")
+          .order("updated_at", { ascending: false });
 
         if (error) {
           console.error("Failed to fetch dashboards:", error);
@@ -90,17 +80,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar variant="sidebar" {...props}>
       <SidebarHeader>
         <div className="flex flex-col gap-4 px-4 py-3">
-          {/* Logo/Branding */}
-          <Link href="/app" className="font-fancy text-2xl text-foreground hover:underline">
+          <Link href="/" className="font-fancy text-2xl text-foreground">
             Procure
           </Link>
-          
-          {/* Main Action Button - More subtle */}
-          <Button 
-            onClick={() => router.push('/')} 
+
+          <Button
+            onClick={() => router.push('/app')}
             variant="secondary"
             size="sm"
-            className="w-full justify-start gap-2"
+            className="w-full justify-start gap-2 text-sm!"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Your Dashboards
+          </Button>
+
+          <Button
+            onClick={() => router.push('/')}
+            variant="secondary"
+            size="sm"
+            className="w-full justify-start gap-2 -mt-2 text-sm!"
           >
             <Plus className="h-4 w-4" />
             New Dashboard

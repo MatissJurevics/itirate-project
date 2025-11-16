@@ -15,22 +15,32 @@ interface Dashboard {
   title: string
   widgets?: any[]
   created_at?: string
-}
-
-interface Widget {
-  data?: any
-  title?: string
-  type?: string
-  widgetType?: string
-  categories?: string[]
-  mapData?: any
-  mapType?: string
-  highchartsConfig?: any
+  updated_at?: string
 }
 
 export default function Page() {
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
   const [loading, setLoading] = useState(true)
+
+  const handleDeleteDashboard = async (id: string) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("dashboards")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        console.error("Failed to delete dashboard:", error)
+        return
+      }
+
+      // Update local state to remove the deleted dashboard
+      setDashboards((prev) => prev.filter((dashboard) => dashboard.id !== id))
+    } catch (error) {
+      console.error("Error deleting dashboard:", error)
+    }
+  }
 
   useEffect(() => {
     const fetchDashboards = async () => {
@@ -38,8 +48,8 @@ export default function Page() {
         const supabase = createClient()
         const { data, error } = await supabase
           .from("dashboards")
-          .select("id, title, widgets, created_at")
-          .order("created_at", { ascending: false })
+          .select("id, title, widgets, created_at, updated_at")
+          .order("updated_at", { ascending: false })
 
         if (error) {
           console.error("Failed to fetch dashboards:", error)
@@ -76,6 +86,8 @@ export default function Page() {
 
     fetchDashboards()
   }, [])
+
+
 
   return (
     <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
@@ -148,6 +160,7 @@ export default function Page() {
                   title={dashboard.title}
                   widgets={dashboard.widgets}
                   created_at={dashboard.created_at}
+                  onDelete={handleDeleteDashboard}
                 />
               ))}
             </div>

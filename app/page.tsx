@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from 'next/navigation'
-import { Loader2, PaperclipIcon, SendIcon, X, FileText } from 'lucide-react'
+import { Loader2, PaperclipIcon, SendIcon, X, FileText, Database } from 'lucide-react'
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -17,6 +17,13 @@ import {
 } from "@/components/ai-elements/prompt-input"
 import { toast } from "sonner"
 import Papa from 'papaparse'
+import { DatasetSelectorPopover } from "@/components/dataset-selector-popover"
+
+interface Dataset {
+  tableName: string
+  fileName: string
+  rowCount: number
+}
 
 export default function Home() {
   const router = useRouter()
@@ -29,6 +36,8 @@ export default function Home() {
   })
   const [isMounted, setIsMounted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [datasets, setDatasets] = useState<Dataset[]>([])
+  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -44,9 +53,9 @@ export default function Home() {
   }, [])
 
   const handleSubmit = async (message: PromptInputMessage) => {
-    // Require CSV file to be uploaded before submitting
-    if (!selectedFile) {
-      toast.error('Please upload a CSV file before submitting')
+    // Require CSV file or dataset to be selected before submitting
+    if (!selectedFile && !selectedDataset) {
+      toast.error('Please upload a CSV file or select an existing dataset before submitting')
       return
     }
 
@@ -56,9 +65,17 @@ export default function Home() {
     const promptText = message.text || ''
     let tableName = ''
     let rowCount = 0
+    let fileName = ''
 
+    // Use existing dataset if selected
+    if (selectedDataset) {
+      tableName = selectedDataset.tableName
+      rowCount = selectedDataset.rowCount
+      fileName = selectedDataset.fileName
+      toast.success(`Using dataset: ${fileName}`)
+    }
     // Process CSV file if one is selected
-    if (selectedFile) {
+    else if (selectedFile) {
       try {
         setLoadingStatus('Parsing CSV file...')
         console.log('Parsing CSV file...', selectedFile.name, selectedFile.size)
@@ -161,7 +178,7 @@ export default function Home() {
         body: JSON.stringify({
           title: promptText || 'New Dashboard',
           csvTableName: tableName,
-          fileName: selectedFile?.name || '',
+          fileName: fileName || selectedFile?.name || '',
           rowCount: rowCount,
           initialPrompt: promptText
         })
@@ -210,6 +227,20 @@ export default function Home() {
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+
+  const handleDatasetSelect = (dataset: Dataset) => {
+    setSelectedDataset(dataset)
+    setSelectedFile(null) // Clear file if dataset is selected
+  }
+
+  const handleUploadNew = () => {
+    setSelectedDataset(null) // Clear dataset if uploading new file
+    fileInputRef.current?.click()
+  }
+
+  const handleRemoveDataset = () => {
+    setSelectedDataset(null)
   }
 
   return (
@@ -275,6 +306,20 @@ export default function Home() {
                     </button>
                   </div>
                 )}
+                {selectedDataset && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-accent/50 border border-border">
+                    <Database className="size-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground flex-1">
+                      {selectedDataset.fileName} ({selectedDataset.rowCount.toLocaleString()} rows)
+                    </span>
+                    <button
+                      onClick={handleRemoveDataset}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
                 <PromptInput onSubmit={handleSubmit}>
                   <PromptInputBody>
                     <PromptInputTextarea
@@ -291,6 +336,12 @@ export default function Home() {
                       >
                         <PaperclipIcon className="size-5" />
                       </PromptInputButton>
+                      <DatasetSelectorPopover
+                        onDatasetSelect={handleDatasetSelect}
+                        onUploadNew={handleUploadNew}
+                        cachedDatasets={datasets.length > 0 ? datasets : null}
+                        onDatasetsFetched={setDatasets}
+                      />
                     </PromptInputTools>
                     <PromptInputSubmit className="bg-gradient-primary hover:brightness-90">
                       <SendIcon className="size-4" />
