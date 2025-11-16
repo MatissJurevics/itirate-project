@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from "@/components/ui/toaster"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SidebarWrapper } from "@/components/sidebar-wrapper"
+import '@cloudscape-design/global-styles/index.css'
 import './globals.css'
 
 const instrumentSerif = Instrument_Serif({

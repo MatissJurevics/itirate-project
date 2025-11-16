@@ -45,10 +45,16 @@ const initialData: SidebarData = {
 
 
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [data, setData] = React.useState<SidebarData>(() => {
-    // Initialize with localStorage data if available
+export function AppSidebar() {
+  const [data, setData] = React.useState<SidebarData>(initialData);
+
+  // Load from localStorage on mount (client-side only)
+  React.useEffect(() => {
     const loadFromLocalStorage = (): SidebarData => {
+      if (typeof window === 'undefined') {
+        return initialData;
+      }
+
       const dashboardData = localStorage.getItem('dashboardid');
       if (!dashboardData) {
         return initialData;
@@ -98,8 +104,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return initialData;
     };
 
-    return loadFromLocalStorage();
-  });
+    const loadedData = loadFromLocalStorage();
+    if (loadedData !== initialData) {
+      setData(loadedData);
+    }
+  }, []);
 
   // Fetch all dashboards from Supabase and update sidebar
   React.useEffect(() => {
@@ -156,7 +165,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, []);
 
   return (
-    <Sidebar variant="sidebar" {...props}>
+    <Sidebar variant="sidebar">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

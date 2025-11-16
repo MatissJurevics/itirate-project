@@ -7,7 +7,7 @@ import { PageTitle } from "@/components/page-title"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
-import { SortableWidget } from "@/components/sortable-widget"
+import { CloudscapeBoardDashboard } from "@/components/cloudscape-board-dashboard"
 import {
   Dialog,
   DialogContent,
@@ -20,20 +20,6 @@ import { FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
 import type { ChartType } from "@/lib/charts/types"
 import { useSidebar } from "@/components/ui/sidebar"
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core"
-import {
-  arrayMove,
-  SortableContext,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable"
 import { nanoid } from "nanoid"
 
 interface PageContentProps {
@@ -42,6 +28,11 @@ interface PageContentProps {
 
 interface Widget {
   id: string
+  // Position and size for Board layout
+  rowSpan?: number
+  columnSpan?: number
+  columnOffset?: { [columns: number]: number }
+  // Existing properties
   data?: any;
   title?: string;
   type?: ChartType;
@@ -71,50 +62,30 @@ export function PageContent({ id }: PageContentProps) {
   const { state: sidebarState } = useSidebar()
   const audioRef = React.useRef<HTMLAudioElement>(null)
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor)
-  )
-
   const ensureWidgetIds = React.useCallback((widgets: any[]): Widget[] => {
-    return widgets.map((widget: any) => {
-      if (widget.id) {
-        return widget as Widget
-      }
+    return widgets.map((widget: any, index: number) => {
+      const baseWidget = widget.id
+        ? (widget as Widget)
+        : ({
+            ...widget,
+            id: widget.chartId || nanoid(),
+          } as Widget)
+
+      // Add default position/size if missing
       return {
-        ...widget,
-        id: widget.chartId || nanoid(),
-      } as Widget
+        ...baseWidget,
+        rowSpan: baseWidget.rowSpan ?? 3,
+        columnSpan: baseWidget.columnSpan ?? 4,
+        columnOffset: baseWidget.columnOffset,
+      }
     })
   }, [])
 
-  const handleDragEnd = React.useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event
-
-      if (!over || active.id === over.id || !dashboard?.widgets) {
-        return
-      }
-
-      const oldIndex = dashboard.widgets.findIndex(
-        (w: Widget) => w.id === active.id
-      )
-      const newIndex = dashboard.widgets.findIndex(
-        (w: Widget) => w.id === over.id
-      )
-
-      if (oldIndex === -1 || newIndex === -1) {
-        return
-      }
-
-      const reorderedWidgets = arrayMove(dashboard.widgets, oldIndex, newIndex)
+  const handleItemsChange = React.useCallback(
+    async (updatedWidgets: Widget[]) => {
       const updatedDashboard = {
         ...dashboard,
-        widgets: reorderedWidgets,
+        widgets: updatedWidgets,
       }
 
       setDashboard(updatedDashboard)
@@ -130,14 +101,14 @@ export function PageContent({ id }: PageContentProps) {
         const supabase = createClient()
         const { error } = await supabase
           .from("dashboards")
-          .update({ widgets: reorderedWidgets })
+          .update({ widgets: updatedWidgets })
           .eq("id", id)
 
         if (error) {
-          console.error("Failed to persist widget order:", error)
+          console.error("Failed to persist widget layout:", error)
         }
       } catch (error) {
-        console.error("Error persisting widget order:", error)
+        console.error("Error persisting widget layout:", error)
       }
     },
     [dashboard, id]
@@ -310,22 +281,10 @@ export function PageContent({ id }: PageContentProps) {
             <div className="bg-muted/50 aspect-video animate-pulse rounded" />
           </div>
         ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={dashboard.widgets.map((w: Widget) => w.id)}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                {dashboard.widgets.map((widget: Widget) => (
-                  <SortableWidget key={widget.id} widget={widget} />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <CloudscapeBoardDashboard
+            widgets={dashboard.widgets}
+            onItemsChange={handleItemsChange}
+          />
         ) : (
           <div className="col-span-3 flex items-center justify-center text-muted-foreground">
             No widgets to display.
