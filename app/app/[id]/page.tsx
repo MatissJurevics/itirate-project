@@ -1,4 +1,3 @@
-import { EditHeader } from "@/components/edit-header"
 import { PageContent } from "./page-content"
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {

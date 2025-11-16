@@ -1,3 +1,4 @@
+"use client"
 import * as React from "react"
 import { GalleryVerticalEnd } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -45,7 +46,60 @@ const initialData: SidebarData = {
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [data, setData] = React.useState<SidebarData>(initialData);
+  const [data, setData] = React.useState<SidebarData>(() => {
+    // Initialize with localStorage data if available
+    const loadFromLocalStorage = (): SidebarData => {
+      const dashboardData = localStorage.getItem('dashboardid');
+      if (!dashboardData) {
+        return initialData;
+      }
+
+      const trimmedData = dashboardData.trim();
+      if (!trimmedData || trimmedData === 'undefined' || trimmedData === 'null') {
+        localStorage.removeItem('dashboardid');
+        return initialData;
+      }
+
+      const firstChar = trimmedData[0];
+      const lastChar = trimmedData[trimmedData.length - 1];
+      const isValidJsonStructure =
+        (firstChar === '[' && lastChar === ']') ||
+        (firstChar === '{' && lastChar === '}');
+
+      if (!isValidJsonStructure) {
+        localStorage.removeItem('dashboardid');
+        return initialData;
+      }
+
+      try {
+        const parsedData = JSON.parse(trimmedData);
+        if (Array.isArray(parsedData)) {
+          const newItems = parsedData
+            .filter(item => item && typeof item === 'object' && item.title && (item.uuid || item.id))
+            .map(item => ({
+              title: item.title,
+              url: `/app/${item.uuid || item.id}`,
+            }));
+
+          if (newItems.length > 0) {
+            return {
+              ...initialData,
+              navMain: initialData.navMain.map(navItem =>
+                navItem.title === "Dashboards"
+                  ? { ...navItem, items: newItems }
+                  : navItem
+              )
+            };
+          }
+        }
+      } catch (error) {
+        localStorage.removeItem('dashboardid');
+      }
+      return initialData;
+    };
+
+    return loadFromLocalStorage();
+  });
 
   // Fetch all dashboards from Supabase and update sidebar
   React.useEffect(() => {
@@ -61,8 +115,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         if (error) {
           console.error("Failed to fetch dashboards:", error);
-          // Fall back to localStorage if Supabase fetch fails
-          loadFromLocalStorage();
           return;
         }
 
@@ -83,76 +135,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             console.warn("Failed to save to localStorage:", storageError);
           }
 
-          // Update sidebar data
-          setData(prevData => ({
-            ...prevData,
-            navMain: prevData.navMain.map(navItem =>
-              navItem.title === "Dashboards"
-                ? { ...navItem, items: sidebarItems }
-                : navItem
-            )
-          }));
-        } else {
-          // No dashboards found, try loading from localStorage as fallback
-          loadFromLocalStorage();
-        }
-      } catch (error) {
-        console.error("Error fetching dashboards:", error);
-        // Fall back to localStorage
-        loadFromLocalStorage();
-      }
-    };
-
-    const loadFromLocalStorage = () => {
-      const dashboardData = localStorage.getItem('dashboardid');
-      if (!dashboardData) {
-        return;
-      }
-
-      // Validate that the data is not empty and is a valid JSON string
-      const trimmedData = dashboardData.trim();
-      if (!trimmedData || trimmedData === 'undefined' || trimmedData === 'null') {
-        localStorage.removeItem('dashboardid');
-        return;
-      }
-
-      // Basic JSON structure validation before parsing
-      const firstChar = trimmedData[0];
-      const lastChar = trimmedData[trimmedData.length - 1];
-      const isValidJsonStructure =
-        (firstChar === '[' && lastChar === ']') ||
-        (firstChar === '{' && lastChar === '}');
-
-      if (!isValidJsonStructure) {
-        console.warn('Invalid JSON structure in localStorage, clearing data');
-        localStorage.removeItem('dashboardid');
-        return;
-      }
-
-      try {
-        const parsedData = JSON.parse(trimmedData);
-        if (Array.isArray(parsedData)) {
-          const newItems = parsedData
-            .filter(item => item && typeof item === 'object' && item.title && (item.uuid || item.id))
-            .map(item => ({
-              title: item.title,
-              url: `/app/${item.uuid || item.id}`,
-            }));
-
-          if (newItems.length > 0) {
+          // Use startTransition to defer the update
+          React.startTransition(() => {
             setData(prevData => ({
               ...prevData,
               navMain: prevData.navMain.map(navItem =>
-                navItem.title === "Create Page"
-                  ? { ...navItem, items: newItems }
+                navItem.title === "Dashboards"
+                  ? { ...navItem, items: sidebarItems }
                   : navItem
               )
             }));
-          }
+          });
         }
       } catch (error) {
-        // Silently handle JSON parsing errors and clear invalid data
-        localStorage.removeItem('dashboardid');
+        console.error("Error fetching dashboards:", error);
       }
     };
 
@@ -166,11 +162,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center">
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">Create New Page</span>
+                  <span className="font-fancy text-lg">Procure</span>
                 </div>
               </a>
             </SidebarMenuButton>

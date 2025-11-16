@@ -1,11 +1,11 @@
 "use client"
 
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { AppHeader } from "@/components/app-header"
+import { PageTitle } from "@/components/page-title"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Paperclip } from "lucide-react"
-import { useRef, ChangeEvent, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardChart } from "@/components/dashboard-chart"
@@ -79,17 +79,15 @@ export default function Page() {
   }, [])
 
   return (
-    <>
-      <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4"
-        />
-        <h1 className="text-xl font-semibold">Dashboards</h1>
-      </header>
-      <div className="flex flex-1 flex-col overflow-auto">
-        <div className="px-4 py-6 flex flex-col gap-8">
+    <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <AppHeader
+        breadcrumbs={[
+          { label: "Dashboards" }
+        ]}
+      />
+      <PageTitle>Your Dashboards</PageTitle>
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
+        <div className="flex flex-col gap-8">
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(6)].map((_, i) => (
@@ -171,7 +169,7 @@ export default function Page() {
                     <div className="p-3 bg-card border-t">
                       <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
                         {dashboard.title.replace(/\w\S*/g, (txt: string) =>
-                          txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+                          txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
                         )}
                       </h3>
                     </div>
@@ -182,6 +180,6 @@ export default function Page() {
           )}
         </div>
       </div>
-    </>
+    </div>
   )
 }

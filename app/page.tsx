@@ -226,9 +226,9 @@ export default function Home() {
             <div className="space-y-8">
               {/* Welcome Text */}
               <div className="text-center space-y-3 animate-fade-in">
-                <h1 className="text-5xl font-bold text-foreground">Welcome to Procure</h1>
+                <h1 className="text-7xl text-foreground font-fancy">Procurement Made <span className="italic font-normal">Painless</span></h1>
                 <h3 className="text-xl text-center text-muted-foreground">
-                  Generate dynamic dashboards based on your procurement data.
+                  Get accurate and simple insights into your data.
                 </h3>
               </div>
 

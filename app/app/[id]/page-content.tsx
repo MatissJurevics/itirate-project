@@ -2,15 +2,15 @@
 
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
-import { EditHeader } from "@/components/edit-header"
+import { AppHeader } from "@/components/app-header"
+import { PageTitle } from "@/components/page-title"
 import { ChatSidebar } from "@/components/chat-sidebar"
+import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardChart } from "@/components/dashboard-chart"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
 import type { ChartType } from "@/lib/charts/types"
+import { useSidebar } from "@/components/ui/sidebar"
 
 interface PageContentProps {
   id: string
@@ -50,7 +51,8 @@ export function PageContent({ id }: PageContentProps) {
   const [dashboard, setDashboard] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [isMounted, setIsMounted] = React.useState(false)
-  const [isAudioBarCollapsed, setIsAudioBarCollapsed] = React.useState(false)
+  const [isAudioBarCollapsed, setIsAudioBarCollapsed] = React.useState(true)
+  const { state: sidebarState } = useSidebar()
   const audioRef = React.useRef<HTMLAudioElement>(null)
 
   React.useEffect(() => {
@@ -152,16 +154,19 @@ export function PageContent({ id }: PageContentProps) {
 
   return (
     <div className="flex h-full w-full overflow-hidden relative">
-      <div
-        className={`flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
-          isAudioBarCollapsed ? "pb-0" : "pb-16"
-        }`}
-      >
-        <EditHeader
-          name={dashboard?.title}
-          onChatOpen={() => setIsChatOpen(true)}
+      <div className={`flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${isAudioBarCollapsed ? 'pb-0' : 'pb-16'}`}>
+        <AppHeader
+          breadcrumbs={[
+            { label: "Dashboards", href: "/app" },
+            { label: dashboard?.title || "Loading..." }
+          ]}
+          actions={
+            <Button onClick={() => setIsChatOpen(true)} disabled={loading}>
+              New Visualisation
+            </Button>
+          }
         />
-
+        
         {/* Optional: Dataset info header only when URL provides info */}
         {(fileName || rowCount || initialPrompt) && (
           <div className="px-4 pt-4">
@@ -197,61 +202,64 @@ export function PageContent({ id }: PageContentProps) {
           </div>
         )}
 
-        {!loading && dashboard?.title && (
+        {loading ? (
           <div className="px-4 pt-4 pb-2">
-            <h1 className="text-2xl font-semibold">
-              {dashboard.title.replace(
-                /\w\S*/g,
-                (txt: string) =>
-                  txt.charAt(0).toUpperCase() +
-                  txt.substr(1).toLowerCase()
-              )}
-            </h1>
+            <div className="h-14 w-64 bg-muted/50 animate-pulse rounded" />
             <div className="h-px bg-border mt-2 mb-4" />
           </div>
-        )}
-
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            {loading && !dashboard ? (
-              <>
-                <div className="bg-muted/50 aspect-video animate-pulse" />
-                <div className="bg-muted/50 aspect-video animate-pulse" />
-                <div className="bg-muted/50 aspect-video animate-pulse" />
-              </>
-            ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
-              dashboard.widgets.map((widget: Widget, idx: number) => (
-                <div
-                  className="bg-muted/50 aspect-video flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full"
-                  key={idx}
-                >
-                  <DashboardChart
-                    highchartsConfig={widget.highchartsConfig}
-                    type={widget.type || widget.widgetType}
-                    data={widget.data}
-                    title={widget.title}
-                    categories={widget.categories}
-                    mapData={widget.mapData}
-                    mapType={widget.mapType}
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="col-span-3 flex items-center justify-center text-muted-foreground">
-                No widgets to display.
+        ) : dashboard?.title ? (
+          <PageTitle>{dashboard.title}</PageTitle>
+        ) : null}
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
+        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+          {loading ? (
+            <>
+              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+            </>
+          ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
+            dashboard.widgets.map((widget: Widget, idx: number) => (
+              <div
+                className="bg-muted/50 aspect-video flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full"
+                key={idx}
+              >
+                <DashboardChart
+                  highchartsConfig={widget.highchartsConfig}
+                  type={widget.type || widget.widgetType}
+                  data={widget.data}
+                  title={widget.title}
+                  categories={widget.categories}
+                  mapData={widget.mapData}
+                  mapType={widget.mapType}
+                />
               </div>
-            )}
-          </div>
+            ))
+          ) : (
+            <div className="col-span-3 flex items-center justify-center text-muted-foreground">
+              No widgets to display.
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Audio Bar - Collapsible with slide animation */}
-      <div
-        className={`fixed left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-          isAudioBarCollapsed ? "bottom-[-64px]" : "bottom-0"
-        }`}
-      >
-        <div className="border-t bg-background px-4 py-3 flex items-center gap-4">
+    </div>
+      {/* Re-open Audio Bar Button - Shows when collapsed */}
+      {isAudioBarCollapsed && (
+        <div className={`fixed bottom-0 z-40 transition-all duration-300 ease-in-out ${isChatOpen ? 'right-[24rem]' : 'right-4'}`}>
+          <Button
+            variant="ghost"
+            onClick={() => setIsAudioBarCollapsed(false)}
+            className="h-8 px-3 rounded-none rounded-t-md border border-b-0 bg-background hover:bg-accent flex items-center gap-1.5"
+          >
+            <ChevronUp className="h-4 w-4" />
+            <span className="font-fancy text-lg leading-none">Audio</span>
+            <span className="sr-only">Open audio player</span>
+          </Button>
+        </div>
+      )}
+      {/* Audio Bar - Fixed at bottom */}
+      <div className={`fixed bottom-0 z-40 border-t bg-background transition-all duration-300 ease-in-out overflow-hidden ${isAudioBarCollapsed ? 'h-0' : 'h-16'} ${sidebarState === 'expanded' ? 'left-[19rem]' : 'left-0'} ${isChatOpen ? 'right-[24rem]' : 'right-0'}`}>
+        <div className="px-4 py-3 flex items-center gap-4 h-full">
           {audioUrl ? (
             <audio
               ref={audioRef}
@@ -260,60 +268,40 @@ export function PageContent({ id }: PageContentProps) {
               className="flex-1 h-8"
             />
           ) : (
-            <div className="flex-1 h-8 bg-muted rounded border border-border flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">
-                No audio available
-              </span>
+            <div className="flex-1 h-8 bg-muted border border-border flex items-center justify-center">
+              <span className="text-sm text-muted-foreground">No audio available</span>
             </div>
           )}
-          {transcript && (
-            <Dialog open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <FileText className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle>Transcript</DialogTitle>
-                  <DialogDescription>
-                    View the transcript for this dashboard
-                  </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="max-h-[60vh] pr-4">
-                  <div className="whitespace-pre-wrap text-sm">
-                    {transcript}
-                  </div>
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsAudioBarCollapsed(!isAudioBarCollapsed)}
-            className="h-8 w-8"
-          >
-            <ChevronDown className="h-4 w-4" />
-            <span className="sr-only">Collapse audio player</span>
-          </Button>
-        </div>
-
-        {/* Floating button to expand audio bar when collapsed */}
-        {isAudioBarCollapsed && (
-          <div className="absolute bottom-full right-4 mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAudioBarCollapsed(false)}
-            >
-              <ChevronUp className="h-4 w-4 mr-2" />
-              Audio Recording
-            </Button>
-          </div>
-        )}
+              {transcript && (
+                <Dialog open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>Transcript</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh] pr-4">
+                      <div className="whitespace-pre-wrap text-sm">
+                        {transcript}
+                      </div>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsAudioBarCollapsed(!isAudioBarCollapsed)}
+                className="h-8 w-8"
+              >
+                <ChevronDown className="h-4 w-4" />
+                <span className="sr-only">Collapse audio player</span>
+              </Button>
+            </div>
       </div>
-
       <ChatSidebar
         open={isChatOpen}
         onOpenChange={setIsChatOpen}
