@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { EditHeader } from "@/components/edit-header"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { createClient } from "@/lib/supabase/client"
@@ -35,6 +36,15 @@ interface Widget {
 }
 
 export function PageContent({ id }: PageContentProps) {
+  const searchParams = useSearchParams()
+
+  // New: values from the URL for the “direct /app” route
+  const initialPrompt = searchParams.get("prompt") || ""
+  const fileName = searchParams.get("fileName") || ""
+  const rowCount = searchParams.get("rows") || ""
+  // Assuming id is your csvId when you come from the upload / info flow
+  const csvId = id
+
   const [isChatOpen, setIsChatOpen] = React.useState(false)
   const [isTranscriptOpen, setIsTranscriptOpen] = React.useState(false)
   const [dashboard, setDashboard] = React.useState<any>(null)
@@ -49,7 +59,6 @@ export function PageContent({ id }: PageContentProps) {
 
   React.useEffect(() => {
     const loadDashboard = async () => {
-      // Check localStorage FIRST before setting loading state
       const storageKey = `dashboard_${id}`
       const cachedData = localStorage.getItem(storageKey)
 
@@ -57,7 +66,6 @@ export function PageContent({ id }: PageContentProps) {
         try {
           const parsedData = JSON.parse(cachedData)
           if (parsedData && parsedData.id === id) {
-            // Normalize widgets if needed (optimize this)
             const normalizedData = {
               ...parsedData,
               widgets: (parsedData.widgets || []).map((widget: any) => {
@@ -72,11 +80,9 @@ export function PageContent({ id }: PageContentProps) {
                 return widget
               })
             }
-            // Set data immediately without loading state
             setDashboard(normalizedData)
             setLoading(false)
 
-            // Fetch from Supabase in the background to update cache
             fetchAndUpdateDashboard(storageKey)
             return
           }
@@ -86,49 +92,43 @@ export function PageContent({ id }: PageContentProps) {
         }
       }
 
-      // Only set loading if we don't have cache
       setLoading(true)
       await fetchAndUpdateDashboard(storageKey)
     }
 
     const fetchAndUpdateDashboard = async (storageKey: string) => {
       try {
-        const supabase = createClient();
+        const supabase = createClient()
 
         const { data, error } = await supabase
           .from("dashboards")
           .select("*")
           .eq("id", id)
-          .single();
+          .single()
 
         if (error) {
-          console.error("Failed to fetch dashboard:", error);
+          console.error("Failed to fetch dashboard:", error)
           setDashboard(null)
           setLoading(false)
           return
         }
 
-        // Normalize widgets using the adapter if they're in API response format
         const normalizedData = {
           ...data,
           widgets: (data.widgets || []).map((widget: any) => {
-            // Check if widget is in API response format
             const isApiResponseFormat =
               (widget.chartId !== undefined || widget.success !== undefined) ||
               (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
               (widget.dataPreview !== undefined && widget.chartType !== undefined)
 
             if (isApiResponseFormat) {
-              // Use adapter to convert API response format to Widget format
               return adaptChartData(widget as ChartApiResponse)
             }
 
-            // Widget is already in the correct format, return as-is
             return widget
           })
         }
 
-        // Store in localStorage
         try {
           localStorage.setItem(storageKey, JSON.stringify(normalizedData))
         } catch (storageError) {
@@ -145,23 +145,72 @@ export function PageContent({ id }: PageContentProps) {
     }
 
     loadDashboard()
-  }, [id]);
+  }, [id])
 
   const audioUrl = dashboard?.audio || null
   const transcript = dashboard?.transcript || null
 
   return (
     <div className="flex h-full w-full overflow-hidden relative">
-      <div className={`flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${isAudioBarCollapsed ? 'pb-0' : 'pb-16'}`}>
-        <EditHeader name={dashboard?.title} onChatOpen={() => setIsChatOpen(true)} />
+      <div
+        className={`flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
+          isAudioBarCollapsed ? "pb-0" : "pb-16"
+        }`}
+      >
+        <EditHeader
+          name={dashboard?.title}
+          onChatOpen={() => setIsChatOpen(true)}
+        />
+
+        {/* Optional: Dataset info header only when URL provides info */}
+        {(fileName || rowCount || initialPrompt) && (
+          <div className="px-4 pt-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h2 className="text-lg font-semibold mb-2">Dataset Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">File:</span>
+                  <span className="ml-2 font-medium">
+                    {fileName || "Unknown"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Rows:</span>
+                  <span className="ml-2 font-medium">
+                    {rowCount || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Table:</span>
+                  <span className="ml-2 font-mono text-xs bg-muted px-2 py-1 rounded">
+                    csv_to_table.csv_{csvId}
+                  </span>
+                </div>
+              </div>
+              {initialPrompt && (
+                <div className="mt-3 pt-3 border-t">
+                  <span className="text-muted-foreground">Initial Prompt:</span>
+                  <p className="mt-1 text-sm italic">{initialPrompt}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {!loading && dashboard?.title && (
           <div className="px-4 pt-4 pb-2">
             <h1 className="text-2xl font-semibold">
-              {dashboard.title.replace(/\w\S*/g, (txt: string) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())}
+              {dashboard.title.replace(
+                /\w\S*/g,
+                (txt: string) =>
+                  txt.charAt(0).toUpperCase() +
+                  txt.substr(1).toLowerCase()
+              )}
             </h1>
             <div className="h-px bg-border mt-2 mb-4" />
           </div>
         )}
+
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
           <div className="grid auto-rows-min gap-4 md:grid-cols-3">
             {loading && !dashboard ? (
@@ -171,32 +220,37 @@ export function PageContent({ id }: PageContentProps) {
                 <div className="bg-muted/50 aspect-video animate-pulse" />
               </>
             ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
-              dashboard.widgets.map(
-                (widget: Widget, idx: number) => (
-                  <div className="bg-muted/50 aspect-video flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full" key={idx}>
-                    <DashboardChart
-                      highchartsConfig={widget.highchartsConfig}
-                      type={widget.type || widget.widgetType}
-                      data={widget.data}
-                      title={widget.title}
-                      categories={widget.categories}
-                      mapData={widget.mapData}
-                      mapType={widget.mapType}
-                    />
-                  </div>
-                )
-              )
+              dashboard.widgets.map((widget: Widget, idx: number) => (
+                <div
+                  className="bg-muted/50 aspect-video flex items-center justify-center p-2 w-full min-w-0 overflow-hidden h-full"
+                  key={idx}
+                >
+                  <DashboardChart
+                    highchartsConfig={widget.highchartsConfig}
+                    type={widget.type || widget.widgetType}
+                    data={widget.data}
+                    title={widget.title}
+                    categories={widget.categories}
+                    mapData={widget.mapData}
+                    mapType={widget.mapType}
+                  />
+                </div>
+              ))
             ) : (
               <div className="col-span-3 flex items-center justify-center text-muted-foreground">
                 No widgets to display.
               </div>
             )}
           </div>
-
         </div>
       </div>
+
       {/* Audio Bar - Collapsible with slide animation */}
-      <div className={`fixed left-0 right-0 z-50 transition-all duration-300 ease-in-out ${isAudioBarCollapsed ? 'bottom-[-64px]' : 'bottom-0'}`}>
+      <div
+        className={`fixed left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
+          isAudioBarCollapsed ? "bottom-[-64px]" : "bottom-0"
+        }`}
+      >
         <div className="border-t bg-background px-4 py-3 flex items-center gap-4">
           {audioUrl ? (
             <audio
@@ -207,7 +261,9 @@ export function PageContent({ id }: PageContentProps) {
             />
           ) : (
             <div className="flex-1 h-8 bg-muted rounded border border-border flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">No audio available</span>
+              <span className="text-sm text-muted-foreground">
+                No audio available
+              </span>
             </div>
           )}
           {transcript && (
@@ -250,7 +306,6 @@ export function PageContent({ id }: PageContentProps) {
               variant="outline"
               size="sm"
               onClick={() => setIsAudioBarCollapsed(false)}
-              className=""
             >
               <ChevronUp className="h-4 w-4 mr-2" />
               Audio Recording
@@ -258,8 +313,13 @@ export function PageContent({ id }: PageContentProps) {
           </div>
         )}
       </div>
-      <ChatSidebar open={isChatOpen} onOpenChange={setIsChatOpen} />
+
+      <ChatSidebar
+        open={isChatOpen}
+        onOpenChange={setIsChatOpen}
+        csvId={csvId}
+        initialPrompt={initialPrompt}
+      />
     </div>
   )
 }
-

@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract column names and infer types from first row
-    const columns = Object.keys(records[0])
+    const columns = Object.keys(csvData[0])
 
     // Generate CSV ID using timestamp + random string (e.g., 1763234493594_w0ydhk)
     const timestamp = Date.now()
     const randomSuffix = Math.random().toString(36).substring(2, 8)
     const csvId = `${timestamp}_${randomSuffix}`
-    const tableName = `csv_${csvId}`
+    const generatedTableName = `csv_${csvId}`
 
     const supabase = await createClient()
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       const sanitizedCol = col.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()
 
       // Check first non-null value to infer type
-      const sampleValue = records.find((r: any) => r[col] != null)?.[col]
+      const sampleValue = csvData.find((r: any) => r[col] != null)?.[col]
       let type = 'text' // default to text
 
       if (sampleValue) {
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Prepare insert data with sanitized column names
     const insertColumns = columns.map(col => col.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase())
 
-    const insertData = records.map((record: Record<string, any>) => {
+    const insertData = csvData.map((record: Record<string, any>) => {
       const sanitizedRecord: Record<string, any> = {}
       Object.keys(record).forEach(key => {
         const sanitizedKey = key.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()
@@ -146,8 +146,7 @@ export async function POST(request: NextRequest) {
       success: true,
       csvId,
       tableName,
-      fileName,
-      rowCount: records.length,
+      rowCount: csvData.length,
       columns: insertColumns,
       columnDefinitions: columns.map((col, index) => ({
         name: col,

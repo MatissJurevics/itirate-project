@@ -1,4 +1,4 @@
-import { generateText } from 'ai';
+import { generateText, stepCountIs } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { highchartsTools } from '@/lib/ai/highcharts-tools';
 import { savePreparedChart } from '@/lib/chart-persistence-tool';
@@ -67,7 +67,7 @@ Please analyze this data and create an appropriate chart visualization. Consider
       system: SYSTEM_PROMPT,
       prompt,
       tools: essentialTools,
-      maxToolRoundtrips: 3
+      stopWhen: stepCountIs(3)
     });
     
     console.log('🎯 AI Response:', result.text);
@@ -116,14 +116,18 @@ Please analyze this data and create an appropriate chart visualization. Consider
       console.log('🔄 Saving chart to database...');
       console.log('📊 Chart Type:', chartType);
       console.log('📋 CSV ID:', csvId);
-      
+
+      if (!savePreparedChart.execute) {
+        throw new Error('savePreparedChart.execute is not defined');
+      }
+
       const saveResult = await savePreparedChart.execute({
         csvId,
         sqlQuery,
         chartOptions: chartConfig,
         chartType,
         userPrompt: userPrompt || 'Generate chart'
-      });
+      }, { toolCallId: 'direct-save', messages: [], abortSignal: undefined });
       
       console.log('💾 Save result:', JSON.stringify(saveResult, null, 2));
       

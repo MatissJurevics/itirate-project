@@ -3,7 +3,7 @@ import { tool } from 'ai';
 import { pool } from '@/lib/postgres-client';
 
 const savePreparedChartSchema = z.object({
-  csvId: z.string().describe('UUID of the CSV file this chart is based on'),
+  csvId: z.string().describe('ID of the CSV file this chart is based on'),
   sqlQuery: z.string().describe('The SQL query that generated the data'),
   chartOptions: z.object({}).passthrough().describe('Complete Highcharts configuration object'),
   chartType: z.string().describe('Type of chart (line, bar, pie, scatter, etc.)'),
@@ -40,7 +40,7 @@ export const savePreparedChart = tool({
           await client.query(`
             CREATE TABLE IF NOT EXISTS charts (
               id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-              csv_id UUID NOT NULL,
+              csv_id TEXT NOT NULL,
               chart_options JSONB NOT NULL,
               sql_query TEXT NOT NULL,
               chart_type TEXT,
@@ -48,6 +48,19 @@ export const savePreparedChart = tool({
               created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
               updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
+          `);
+
+          // Migrate csv_id column from UUID to TEXT if needed (handles existing tables)
+          await client.query(`
+            DO $$
+            BEGIN
+              IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'charts' AND column_name = 'csv_id' AND data_type = 'uuid'
+              ) THEN
+                ALTER TABLE charts ALTER COLUMN csv_id TYPE TEXT;
+              END IF;
+            END $$;
           `);
 
           // Insert the chart
