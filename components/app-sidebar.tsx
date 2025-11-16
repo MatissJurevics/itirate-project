@@ -8,13 +8,12 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,7 +24,8 @@ import {
 } from "@/components/ui/tooltip"
 import { useRouter } from "next/navigation"
 
-interface SidebarItem {
+interface Dashboard {
+  id: string;
   title: string;
   url: string;
 }
@@ -47,32 +47,17 @@ const truncateTitle = (title: string) => {
   return `${title.slice(0, 30)}...`
 }
 
-// This is sample data.
-const initialData: SidebarData = {
-  navMain: [
-    {
-      title: "Dashboards",
-      url: "/app",
-      items: [],
-    },
-
-  ]
-}
-
-
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [data, setData] = React.useState<SidebarData>(initialData);
+  const [dashboards, setDashboards] = React.useState<Dashboard[]>([]);
   const router = useRouter();
 
-  // Fetch all dashboards from Supabase and update sidebar
+  // Fetch all dashboards from Supabase
   React.useEffect(() => {
     const fetchDashboards = async () => {
       try {
         const supabase = createClient();
 
-        // Fetch all dashboards from the dashboards table
-        const { data: dashboards, error } = await supabase
+        const { data, error } = await supabase
           .from("dashboards")
           .select("id, title, created_at")
           .order("created_at", { ascending: false });
@@ -82,24 +67,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           return;
         }
 
-        if (dashboards && dashboards.length > 0) {
-          // Transform dashboards to sidebar items format
-          const sidebarItems = dashboards
+        if (data && data.length > 0) {
+          const formattedDashboards = data
             .filter(dashboard => dashboard.id && dashboard.title)
             .map(dashboard => ({
+              id: dashboard.id,
               title: dashboard.title || `Dashboard ${dashboard.id.slice(0, 8)}`,
               url: `/app/${dashboard.id}`,
-              uuid: dashboard.id,
             }));
 
-          setData(prevData => ({
-            ...prevData,
-            navMain: prevData.navMain.map(navItem =>
-              navItem.title === "Dashboards"
-                ? { ...navItem, items: sidebarItems }
-                : navItem
-            )
-          }));
+          setDashboards(formattedDashboards);
         }
       } catch (error) {
         console.error("Error fetching dashboards:", error);
@@ -110,54 +87,62 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, []);
 
   return (
-    <Sidebar variant="sidebar">
+    <Sidebar variant="sidebar" {...props}>
       <SidebarHeader>
-        <div className="flex flex-col gap-3 p-2">
+        <div className="flex flex-col gap-4 px-4 py-3">
           {/* Logo/Branding */}
-          <div className="px-2 py-1">
-            <span className="font-fancy text-2xl">Procure</span>
+          <div>
+            <span className="font-fancy text-2xl text-foreground">Procure</span>
           </div>
-          {/* Main Action Button */}
-          <Button onClick={() => router.push('/')} className="flex-row mt-2 flex w-fit justify-start gap-2">
+          
+          {/* Main Action Button - More subtle */}
+          <Button 
+            onClick={() => router.push('/')} 
+            variant="secondary"
+            size="sm"
+            className="w-full justify-start gap-2"
+          >
             <Plus className="h-4 w-4" />
-            Create New Dashboard
+            New Dashboard
           </Button>
         </div>
       </SidebarHeader>
+
+      <SidebarSeparator />
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarMenu className="gap-2">
-            {data.navMain.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild>
-                  <Link href={item.url} className="font-medium">
-                    <span title={item.title}>{truncateTitle(item.title)}</span>
-                  </Link>
-                </SidebarMenuButton>
-                {item.items?.length ? (
-                  <SidebarMenuSub className="ml-0 border-l-0 px-1.5">
-                    {item.items.map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <SidebarMenuSubButton asChild isActive={false} className="w-full">
-                                <Link href={item.url} className="block">
-                                  <span className="truncate">{item.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" align="center">
-                              <p>{item.title}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                ) : null}
-              </SidebarMenuItem>
-            ))}
+          <SidebarGroupLabel className="text-xs text-muted-foreground px-4">
+            Recent Dashboards
+          </SidebarGroupLabel>
+          <SidebarMenu className="gap-1 px-2">
+            {dashboards.length > 0 ? (
+              dashboards.map((dashboard) => (
+                <SidebarMenuItem key={dashboard.id}>
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton asChild>
+                          <Link href={dashboard.url} className="w-full">
+                            <span className="truncate">{truncateTitle(dashboard.title)}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      {dashboard.title.length > 32 && (
+                        <TooltipContent side="right" align="center">
+                          <p>{dashboard.title}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                </SidebarMenuItem>
+              ))
+            ) : (
+              <div className="px-4 py-6 text-center">
+                <p className="text-sm text-muted-foreground">No dashboards yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Create one to get started</p>
+              </div>
+            )}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

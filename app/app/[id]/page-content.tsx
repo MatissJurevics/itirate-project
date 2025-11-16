@@ -186,6 +186,33 @@ export function PageContent({ id }: PageContentProps) {
     [dashboard, id]
   )
 
+  const handleWidgetDelete = React.useCallback(
+    async (widgetId: string) => {
+      try {
+        const response = await fetch(`/api/dashboards/${id}/widgets/${widgetId}`, {
+          method: 'DELETE',
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to delete widget')
+        }
+
+        // Update local state by filtering out the deleted widget
+        setDashboard((prev: any) => ({
+          ...prev,
+          widgets: prev.widgets.filter((w: Widget) => w.id !== widgetId)
+        }))
+
+        toast.success('Widget deleted successfully')
+      } catch (error) {
+        console.error('Error deleting widget:', error)
+        toast.error(error instanceof Error ? error.message : 'Failed to delete widget')
+      }
+    },
+    [id]
+  )
+
   React.useEffect(() => {
     setIsMounted(true)
   }, [])
@@ -472,6 +499,8 @@ export function PageContent({ id }: PageContentProps) {
             <CloudscapeBoardDashboard
               widgets={dashboard.widgets}
               onItemsChange={handleItemsChange}
+              onWidgetDelete={handleWidgetDelete}
+              dashboardId={id}
             />
           ) : (
             <div className="col-span-3 flex items-center justify-center text-muted-foreground">

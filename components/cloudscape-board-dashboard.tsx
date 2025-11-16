@@ -3,10 +3,20 @@
 import * as React from "react"
 import { Board, BoardItem } from "@cloudscape-design/board-components"
 import type { BoardProps } from "@cloudscape-design/board-components"
-import { Button } from "@cloudscape-design/components"
+import { Button, SpaceBetween } from "@cloudscape-design/components"
 import { DashboardChart } from "@/components/dashboard-chart"
 import type { ChartType } from "@/lib/charts/types"
 import { useCopyChartToClipboard } from "@/hooks/use-copy-chart"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export interface Widget {
   id: string
@@ -74,11 +84,15 @@ const MemoizedChartWrapper = React.memo(
 interface CloudscapeBoardDashboardProps {
   widgets: Widget[]
   onItemsChange: (items: Widget[]) => void
+  onWidgetDelete?: (widgetId: string) => void
+  dashboardId?: string
 }
 
 export function CloudscapeBoardDashboard({
   widgets,
   onItemsChange,
+  onWidgetDelete,
+  dashboardId,
 }: CloudscapeBoardDashboardProps) {
   // Create Map for O(1) widget lookups instead of O(n) array.find()
   const widgetsMap = React.useMemo(() => {
@@ -148,37 +162,84 @@ export function CloudscapeBoardDashboard({
       const chartRef = React.useRef<any>(null)
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartRef)
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [isDeleting, setIsDeleting] = React.useState(false)
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
 
       const handleCopy = async () => {
         await copyChartToClipboard()
       }
 
+      const handleDeleteClick = () => {
+        setShowDeleteConfirm(true)
+      }
+
+      const handleDeleteConfirm = async () => {
+        if (!onWidgetDelete || !dashboardId) return
+        
+        setIsDeleting(true)
+        setShowDeleteConfirm(false)
+        try {
+          await onWidgetDelete(widget.id)
+        } finally {
+          setIsDeleting(false)
+        }
+      }
+
       return (
-        <BoardItem
-          header={widget.title || "Chart"}
-          settings={
-            <Button
-              variant="icon"
-              iconName={copySuccess ? "check" : "copy"}
-              onClick={handleCopy}
-              loading={isCopying}
-              ariaLabel="Copy chart to clipboard"
-            />
-          }
-          i18nStrings={{
-            dragHandleAriaLabel: "Drag handle",
-            dragHandleAriaDescription:
-              "Use arrow keys to move the item, Space to complete drag, Escape to cancel drag.",
-            resizeHandleAriaLabel: "Resize handle",
-            resizeHandleAriaDescription:
-              "Use arrow keys to resize the item, Space to complete resize, Escape to cancel resize.",
-          }}
-        >
-          <MemoizedChartWrapper ref={chartRef} widget={widget} />
-        </BoardItem>
+        <>
+          <BoardItem
+            header={widget.title || "Chart"}
+            settings={
+              <SpaceBetween direction="horizontal" size="xs">
+                <Button
+                  variant="icon"
+                  iconName={copySuccess ? "check" : "copy"}
+                  onClick={handleCopy}
+                  loading={isCopying}
+                  ariaLabel="Copy chart to clipboard"
+                />
+                {onWidgetDelete && (
+                  <Button
+                    variant="icon"
+                    iconName="remove"
+                    onClick={handleDeleteClick}
+                    loading={isDeleting}
+                    ariaLabel="Delete widget"
+                  />
+                )}
+              </SpaceBetween>
+            }
+            i18nStrings={{
+              dragHandleAriaLabel: "Drag handle",
+              dragHandleAriaDescription:
+                "Use arrow keys to move the item, Space to complete drag, Escape to cancel drag.",
+              resizeHandleAriaLabel: "Resize handle",
+              resizeHandleAriaDescription:
+                "Use arrow keys to resize the item, Space to complete resize, Escape to cancel resize.",
+            }}
+          >
+            <MemoizedChartWrapper ref={chartRef} widget={widget} />
+          </BoardItem>
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Widget</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{widget.title || 'this widget'}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )
     },
-    [widgetsMap]
+    [widgetsMap, onWidgetDelete, dashboardId]
   )
 
   const i18nStrings: BoardProps.I18nStrings<Widget> = React.useMemo(
