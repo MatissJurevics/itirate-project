@@ -37,6 +37,7 @@ export function DashboardChart({
   showCopyButton = true,
 }: DashboardChartProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const [isHovered, setIsHovered] = React.useState(false)
   const chartHeight = useChartHeight(containerRef, height)
   const loadedMapData = useMapData(type, mapType, mapData, highchartsConfig)
 
@@ -110,7 +111,11 @@ export function DashboardChart({
   }, [copyChartToClipboard])
 
   return (
-    <div className="relative w-full h-full min-w-0">
+    <div 
+      className="relative w-full h-full min-w-0 group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div ref={containerRef} className="w-full h-full min-w-0 overflow-hidden" />
       {showCopyButton && (
         <button
@@ -119,8 +124,10 @@ export function DashboardChart({
             handleCopy()
           }}
           disabled={isCopying}
-          className="absolute top-2 right-2 z-[100] px-3 py-2 text-xs font-semibold rounded-lg bg-white dark:bg-gray-800 border-2 border-gray-400 dark:border-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-500 dark:hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg"
-          style={{ zIndex: 100, pointerEvents: 'auto' }}
+          className={`absolute top-2 right-2 z-[100] px-3 py-2 text-xs font-semibold rounded-lg bg-white dark:bg-gray-800 border-2 border-gray-400 dark:border-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-500 dark:hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg ${
+            isHovered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          style={{ zIndex: 100 }}
           title="Copy chart to clipboard"
           aria-label="Copy chart to clipboard"
         >
