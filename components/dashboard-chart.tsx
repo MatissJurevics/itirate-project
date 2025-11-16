@@ -107,7 +107,15 @@ export const DashboardChart = React.forwardRef<any, DashboardChartProps>(functio
   const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(internalChartInstanceRef)
 
   // Expose chart instance via forwarded ref
-  React.useImperativeHandle(chartInstanceRef, () => internalChartInstanceRef.current, [internalChartInstanceRef])
+  // Use useImperativeHandle to expose the chart instance
+  React.useImperativeHandle(chartInstanceRef, () => internalChartInstanceRef.current, [])
+  
+  // Also directly sync the ref for compatibility (some refs might not work with useImperativeHandle)
+  React.useEffect(() => {
+    if (chartInstanceRef && typeof chartInstanceRef === 'object' && 'current' in chartInstanceRef) {
+      (chartInstanceRef as React.MutableRefObject<any>).current = internalChartInstanceRef.current
+    }
+  })
 
   const handleCopy = React.useCallback(async () => {
     await copyChartToClipboard()

@@ -7,6 +7,7 @@ import { Button, SpaceBetween } from "@cloudscape-design/components"
 import { DashboardChart } from "@/components/dashboard-chart"
 import type { ChartType } from "@/lib/charts/types"
 import { useCopyChartToClipboard } from "@/hooks/use-copy-chart"
+import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,7 @@ export interface Widget {
 }
 
 // Memoized chart component to prevent re-renders during drag/resize
+// Note: We need to use forwardRef first, then memo, to properly forward refs
 const MemoizedChartWrapper = React.memo(
   React.forwardRef<any, { widget: Widget }>(({ widget }, ref) => (
     <div
@@ -81,6 +83,9 @@ const MemoizedChartWrapper = React.memo(
   }
 )
 
+// Set displayName for better debugging
+MemoizedChartWrapper.displayName = "MemoizedChartWrapper"
+
 // Separate component for board items to allow proper hook usage
 // This MUST be a separate component because hooks cannot be called inside callbacks
 interface BoardItemComponentProps {
@@ -94,10 +99,40 @@ const BoardItemComponent = React.memo(({ widget, onWidgetDelete, dashboardId }: 
   const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartRef)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+  const { toast } = useToast()
+
+  // Track previous copySuccess to show toast on change
+  const prevCopySuccessRef = React.useRef(false)
+  React.useEffect(() => {
+    if (copySuccess && !prevCopySuccessRef.current) {
+      toast({
+        title: "Chart copied!",
+        description: "The chart has been copied to your clipboard.",
+      })
+    }
+    prevCopySuccessRef.current = copySuccess
+  }, [copySuccess, toast])
 
   const handleCopy = React.useCallback(async () => {
-    await copyChartToClipboard()
-  }, [copyChartToClipboard])
+    // Check if chart instance is available
+    if (!chartRef.current) {
+      toast({
+        title: "Chart not ready",
+        description: "Please wait for the chart to finish loading.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const success = await copyChartToClipboard()
+    if (!success) {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy chart to clipboard. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }, [copyChartToClipboard, toast])
 
   const handleDeleteClick = React.useCallback(() => {
     setShowDeleteConfirm(true)
@@ -123,10 +158,11 @@ const BoardItemComponent = React.memo(({ widget, onWidgetDelete, dashboardId }: 
           <SpaceBetween direction="horizontal" size="xs">
             <Button
               variant="icon"
-              iconName={copySuccess ? "check" : "copy"}
+              iconName={copySuccess ? "status-positive" : isCopying ? "status-in-progress" : "copy"}
               onClick={handleCopy}
               loading={isCopying}
-              ariaLabel="Copy chart to clipboard"
+              ariaLabel={copySuccess ? "Chart copied to clipboard" : isCopying ? "Copying chart..." : "Copy chart to clipboard"}
+              title={copySuccess ? "Copied!" : isCopying ? "Copying..." : "Copy chart to clipboard"}
             />
             {onWidgetDelete && (
               <Button
