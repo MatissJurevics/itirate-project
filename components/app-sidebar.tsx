@@ -91,9 +91,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="flex flex-col gap-4 px-4 py-3">
           {/* Logo/Branding */}
-          <div>
-            <span className="font-fancy text-2xl text-foreground">Procure</span>
-          </div>
+          <Link href="/app" className="font-fancy text-2xl text-foreground hover:underline">
+            Procure
+          </Link>
           
           {/* Main Action Button - More subtle */}
           <Button 
