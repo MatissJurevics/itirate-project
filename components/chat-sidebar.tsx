@@ -329,7 +329,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
           // Small delay to ensure database write is complete
           setTimeout(() => {
             onChartGenerated()
-          }, chartGenerated ? 500 : 1000) // Shorter delay if chart keywords found, longer otherwise
+          }, chartModified ? 500 : 1000) // Shorter delay if chart keywords found, longer otherwise
         }
       }
     } catch (error) {
