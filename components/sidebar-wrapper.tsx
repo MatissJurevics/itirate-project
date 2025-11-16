@@ -12,14 +12,13 @@ interface SidebarWrapperProps {
 
 export function SidebarWrapper({ children }: SidebarWrapperProps) {
   const pathname = usePathname()
-  // Use consistent initial state for SSR (always true, then update after mount)
-  const [open, setOpen] = useState(true)
+  const isRootPage = pathname === '/'
+  // Initialize using the current path to avoid the sidebar flashing open on /
+  const [open, setOpen] = useState(() => !isRootPage)
   
   useEffect(() => {
-    // Update after mount to avoid hydration mismatch
-    const isRootPage = pathname === '/'
     setOpen(!isRootPage)
-  }, [pathname])
+  }, [isRootPage])
   
   return (
     <SidebarProvider
@@ -38,4 +37,3 @@ export function SidebarWrapper({ children }: SidebarWrapperProps) {
     </SidebarProvider>
   )
 }
-
