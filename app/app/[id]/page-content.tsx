@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { FileText, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
 import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
 import type { ChartType } from "@/lib/charts/types"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -373,6 +373,16 @@ export function PageContent({ id }: PageContentProps) {
               <div className="bg-muted/50 aspect-video animate-pulse rounded" />
               <div className="bg-muted/50 aspect-video animate-pulse rounded" />
               <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+            </div>
+          ) : isProcessingInitialPrompt ? (
+            <div className="flex flex-1 flex-col items-center justify-center min-h-[400px] gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-2">Generating Dashboard</h3>
+                <p className="text-muted-foreground text-sm max-w-md">
+                  AI is analyzing your data and creating visualizations...
+                </p>
+              </div>
             </div>
           ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
             <CloudscapeBoardDashboard

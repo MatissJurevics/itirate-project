@@ -27,7 +27,7 @@ export function useCopyChartToClipboard(chartInstanceRef: React.RefObject<Highch
 
     try {
       // Use Highcharts' exportChart to get chart as SVG
-      const svg = chart.getSVG()
+      const svg = (chart as any).getSVG()
       
       if (!svg) {
         throw new Error("Failed to get SVG from chart")
