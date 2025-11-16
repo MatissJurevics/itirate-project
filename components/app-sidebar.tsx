@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import Link from "next/link"
-import { GalleryVerticalEnd, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 import {
@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useRouter } from "next/navigation"
 
 interface SidebarItem {
   title: string;
@@ -62,6 +63,7 @@ const initialData: SidebarData = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [data, setData] = React.useState<SidebarData>(initialData);
+  const router = useRouter();
 
   // Fetch all dashboards from Supabase and update sidebar
   React.useEffect(() => {
@@ -115,13 +117,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="px-2 py-1">
             <span className="font-fancy text-2xl">Procure</span>
           </div>
-          
           {/* Main Action Button */}
-          <Button asChild className="w-full justify-start gap-2">
-            <Link href="/app">
-              <Plus className="h-4 w-4" />
-              Create New Dashboard
-            </Link>
+          <Button onClick={() => router.push('/')} className="flex-row mt-2 flex w-fit justify-start gap-2">
+            <Plus className="h-4 w-4" />
+            Create New Dashboard
           </Button>
         </div>
       </SidebarHeader>
