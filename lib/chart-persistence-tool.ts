@@ -7,13 +7,14 @@ const savePreparedChartSchema = z.object({
   sqlQuery: z.string().describe('The SQL query that generated the data'),
   chartOptions: z.object({}).passthrough().describe('Complete Highcharts configuration object'),
   chartType: z.string().describe('Type of chart (line, bar, pie, scatter, etc.)'),
-  userPrompt: z.string().optional().describe('Original user question/prompt')
+  userPrompt: z.string().optional().describe('Original user question/prompt'),
+  dashboardId: z.string().optional().describe('Dashboard ID to link this chart to')
 });
 
 export const savePreparedChart = tool({
   description: 'Save chart configuration to the database',
   inputSchema: savePreparedChartSchema,
-  execute: async ({ csvId, sqlQuery, chartOptions, chartType, userPrompt }) => {
+  execute: async ({ csvId, sqlQuery, chartOptions, chartType, userPrompt, dashboardId }) => {
     const maxRetries = 2;
     let lastError: Error | null = null;
 
@@ -63,12 +64,12 @@ export const savePreparedChart = tool({
             END $$;
           `);
 
-          // Insert the chart
+          // Insert the chart with optional dashboard_id
           const result = await client.query(`
-            INSERT INTO charts (csv_id, chart_options, sql_query, chart_type, user_prompt)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO charts (csv_id, chart_options, sql_query, chart_type, user_prompt, dashboard_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id;
-          `, [csvId, chartOptions, sqlQuery, chartType, userPrompt]);
+          `, [csvId, chartOptions, sqlQuery, chartType, userPrompt, dashboardId || null]);
 
           console.log('✅ Chart saved successfully with ID:', result.rows[0].id);
           console.log('=====================================\n');

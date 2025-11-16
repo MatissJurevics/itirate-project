@@ -15,6 +15,7 @@ interface Message {
 interface RequestBody {
   messages: Message[];
   csvId?: string; // Optional CSV ID for SQL analysis
+  dashboardId?: string; // Optional dashboard ID for linking charts
 }
 
 // Configure LM Studio provider
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.text();
     console.log('Raw request body:', body);
-    const { messages, csvId }: RequestBody = JSON.parse(body);
+    const { messages, csvId, dashboardId }: RequestBody = JSON.parse(body);
 
     // Create SQL tools if we have CSV context
     let tools = {};
@@ -52,11 +53,12 @@ export async function POST(req: Request) {
       const tableName = uuidRegex.test(csvId)
         ? `csv_${csvId.replace(/-/g, '_')}`
         : `csv_${csvId}`;
-      console.log('Creating SQL tools for:', { csvId, tableName });
+      console.log('Creating SQL tools for:', { csvId, tableName, dashboardId });
       tools = {
         ...createSQLTools({
           csvId,
-          tableName
+          tableName,
+          dashboardId
         })
       };
     }
