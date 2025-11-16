@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Instrument_Serif } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SidebarWrapper } from "@/components/sidebar-wrapper"
 import { CloudscapeThemeProvider } from "@/components/cloudscape-theme-provider"
@@ -50,6 +51,7 @@ export default function RootLayout({
           <SidebarWrapper>
             {children}
             <Toaster />
+            <SonnerToaster position="top-right" richColors />
           </SidebarWrapper>
         </TooltipProvider>
         <Analytics />

@@ -2,7 +2,7 @@ import { pool } from '@/lib/postgres-client';
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { dashboardId: string; widgetId: string } }
+  { params }: { params: Promise<{ dashboardId: string; widgetId: string }> }
 ) {
   try {
     const { dashboardId, widgetId } = await params;

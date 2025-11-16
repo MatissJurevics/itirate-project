@@ -44,6 +44,12 @@ export default function Home() {
   }, [])
 
   const handleSubmit = async (message: PromptInputMessage) => {
+    // Require CSV file to be uploaded before submitting
+    if (!selectedFile) {
+      toast.error('Please upload a CSV file before submitting')
+      return
+    }
+
     setIsLoading(true)
     setLoadingStatus('Preparing...')
 
