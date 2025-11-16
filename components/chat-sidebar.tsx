@@ -236,6 +236,14 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
       // Check content type
       const contentType = response.headers.get('content-type') || ''
       console.log('Content-Type:', contentType)
+      
+      // Check if tools were executed (from custom headers)
+      const toolsExecuted = response.headers.get('X-Tools-Executed') === 'true'
+      const toolNamesHeader = response.headers.get('X-Tool-Names')
+      const toolNames = toolNamesHeader ? toolNamesHeader.split(',') : []
+      if (toolsExecuted) {
+        console.log('🔧 Tools executed:', toolNames)
+      }
 
       // Handle streaming response
       const reader = response.body?.getReader()
@@ -284,15 +292,29 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
       // Handle empty response - might be tool-only response
       if (!fullContent.trim()) {
         console.warn('Empty response received - likely tool-only call')
-        const fallbackMessage = "I've processed your request. Please check your dashboard to see the changes."
+        const toolMessage = toolsExecuted && toolNames.length > 0
+          ? `I've executed ${toolNames.length} tool(s): ${toolNames.join(', ')}. Please check your dashboard to see the changes.`
+          : "I've processed your request. Please check your dashboard to see the changes."
+        
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, content: fallbackMessage }
+              ? { ...msg, content: toolMessage }
               : msg
           )
         )
-        saveMessageToDb("assistant", fallbackMessage)
+        saveMessageToDb("assistant", toolMessage)
+        
+        // Always refresh dashboard after tool execution, even if no text response
+        // Tools might have been called (generate_chart, update_widget, delete_widget, etc.)
+        if (onChartGenerated) {
+          console.log('Empty response detected - refreshing dashboard in case tools were executed')
+          // Longer delay for tool execution and DB writes to complete
+          // Especially important for generate_chart which does nested LLM calls
+          setTimeout(() => {
+            onChartGenerated()
+          }, toolsExecuted ? 2000 : 1000) // 2 seconds if tools executed, 1 second otherwise
+        }
       } else {
         // Save assistant message to database after streaming completes
         const cleanedContent = cleanMessageContent(fullContent)
@@ -307,7 +329,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
           // Small delay to ensure database write is complete
           setTimeout(() => {
             onChartGenerated()
-          }, 500)
+          }, chartGenerated ? 500 : 1000) // Shorter delay if chart keywords found, longer otherwise
         }
       }
     } catch (error) {

@@ -91,11 +91,18 @@ Usage notes:
       }
     }
 
+    // Track tool execution to detect when tools run but no text is generated
+    let toolsExecuted = false;
+    let toolNames: string[] = [];
+    let lastToolResult: any = null;
+    
+    console.log('🔍 Initializing tool tracking:', { toolsExecuted, toolNames: toolNames.length });
+
     const result = streamText({
       model: getModel(),
       messages,
       tools,
-      stopWhen: stepCountIs(7), // Allows: query inspection, data query, evaluation, optional refinement, chart generation, response
+      stopWhen: stepCountIs(10), // Increased from 7 to allow more steps for tool execution + response
       onStepFinish: ({ text, toolCalls, toolResults, finishReason, usage }) => {
         console.log('\n' + '='.repeat(80));
         console.log(`📊 STEP FINISHED - Reason: ${finishReason}`);
@@ -109,6 +116,8 @@ Usage notes:
         }
 
         if (toolCalls && toolCalls.length > 0) {
+          toolsExecuted = true;
+          toolNames.push(...toolCalls.map(c => c.toolName));
           console.log(`\n🔧 Tool Calls (${toolCalls.length}):`);
           toolCalls.forEach((call, idx) => {
             console.log(`\n   [${idx + 1}] ${call.toolName}`);
@@ -118,11 +127,25 @@ Usage notes:
         }
 
         if (toolResults && toolResults.length > 0) {
+          toolsExecuted = true;
+          toolNames.push(...toolResults.map(r => r.toolName));
+          lastToolResult = toolResults[toolResults.length - 1];
           console.log(`\n✅ Tool Results (${toolResults.length}):`);
           toolResults.forEach((result, idx) => {
             console.log(`\n   [${idx + 1}] ${result.toolName}`);
             console.log(`       Tool Call ID: ${result.toolCallId}`);
             console.log(`       Result:`, JSON.stringify(result, null, 2));
+            
+            // Log specific tool results for debugging
+            if (result.toolName === 'saveDashboardWidget' || result.toolName === 'generate_chart') {
+              const output = (result as any).result || (result as any).output;
+              if (output) {
+                console.log(`\n   🎯 ${result.toolName} Output:`, JSON.stringify(output, null, 2));
+                if (output.success === false) {
+                  console.error(`\n   ❌ ${result.toolName} FAILED:`, output.error || output.message);
+                }
+              }
+            }
           });
         }
 
@@ -315,7 +338,33 @@ Available tools when CSV data is provided:
 Always prioritize user experience and create visually appealing, accessible charts.`,
     });
 
-    return result.toTextStreamResponse();
+    // Log tool execution status before creating response
+    console.log('🔍 Tool execution status before response:', { 
+      toolsExecuted, 
+      toolNames, 
+      toolCount: toolNames.length 
+    });
+    
+    // Get the stream response from the result
+    const streamResponse = result.toTextStreamResponse();
+    
+    // Clone the response and add custom headers
+    const headers = new Headers(streamResponse.headers);
+    
+    if (toolsExecuted && toolNames.length > 0) {
+      headers.set('X-Tools-Executed', 'true');
+      headers.set('X-Tool-Names', toolNames.join(','));
+      console.log('✅ Setting tool execution headers:', { toolNames });
+    } else {
+      console.log('⚠️ No tools executed or tool names empty');
+    }
+    
+    // Create a new Response with the original body but updated headers
+    return new Response(streamResponse.body, {
+      status: streamResponse.status,
+      statusText: streamResponse.statusText,
+      headers: headers
+    });
   } catch (error) {
     console.error('AI Chat API Error:', error);
     return Response.json(

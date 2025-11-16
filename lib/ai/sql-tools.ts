@@ -245,6 +245,10 @@ Please analyze this data and create an appropriate chart visualization.
 `;
 
       try {
+        console.log('🤖 Starting nested LLM call for chart generation...');
+        console.log('📋 Prompt length:', prompt.length);
+        console.log('🎯 Dashboard ID for saving:', context.dashboardId);
+        
         // Use nested LLM call to generate chart configuration
         const chartResult = await generateText({
           model: anthropic('claude-3-haiku-20240307'),
@@ -264,6 +268,14 @@ Please analyze this data and create an appropriate chart visualization.
 
         console.log('🎯 Chart Generation Response:', chartResult.text);
         console.log('🔧 Tool calls:', chartResult.steps?.length || 0);
+        console.log('📊 Chart result steps:', chartResult.steps?.map((s, idx) => ({
+          stepIndex: idx,
+          toolCalls: s.toolCalls?.map(tc => tc.toolName),
+          toolResults: s.toolResults?.map(tr => ({
+            toolName: tr.toolName,
+            hasOutput: !!(tr as any).output
+          }))
+        })));
 
         // Extract chart configuration and saved chart ID
         let chartConfig: any = null;
@@ -271,14 +283,22 @@ Please analyze this data and create an appropriate chart visualization.
         let chartId: string | null = null;
         let saveSuccess = false;
 
+        console.log('🔍 Extracting chart config and save results...');
+        
         if (chartResult.steps) {
-          for (const step of chartResult.steps) {
+          console.log(`📋 Processing ${chartResult.steps.length} steps...`);
+          for (let stepIdx = 0; stepIdx < chartResult.steps.length; stepIdx++) {
+            const step = chartResult.steps[stepIdx];
+            console.log(`  Step ${stepIdx + 1}: toolResults: ${step.toolResults?.length || 0}`);
             if (step.toolResults) {
               for (const toolResult of step.toolResults) {
-                // Extract chart config from Highcharts tool results
                 const toolResultAny = toolResult as any;
+                console.log(`  🔧 Tool: ${toolResult.toolName}`);
+                
+                // Extract chart config from Highcharts tool results
                 if (toolResult.toolName.startsWith('generate') && toolResultAny.output) {
                   chartConfig = toolResultAny.output;
+                  console.log(`  ✅ Found chart config from ${toolResult.toolName}`);
                   // Determine chart type from tool name
                   if (toolResult.toolName.includes('Line')) chartType = 'line';
                   else if (toolResult.toolName.includes('Column')) chartType = 'column';
@@ -287,36 +307,69 @@ Please analyze this data and create an appropriate chart visualization.
                   else if (toolResult.toolName.includes('Scatter')) chartType = 'scatter';
                   else if (toolResult.toolName.includes('Area')) chartType = 'area';
                 }
-                // Extract save result
-                if (toolResult.toolName === 'saveDashboardWidget' && toolResultAny.output) {
-                  const saveResult = toolResultAny.output as any;
-                  if (saveResult.success) {
-                    saveSuccess = true;
-                    chartId = saveResult.widgetId;
+                // Extract save result - check both 'result' and 'output' properties
+                if (toolResult.toolName === 'saveDashboardWidget') {
+                  console.log(`  💾 Found saveDashboardWidget result`);
+                  const saveResult = toolResultAny.result || toolResultAny.output;
+                  console.log(`  📦 Save result:`, JSON.stringify(saveResult, null, 2));
+                  if (saveResult && typeof saveResult === 'object') {
+                    if (saveResult.success) {
+                      saveSuccess = true;
+                      chartId = saveResult.widgetId;
+                      console.log(`  ✅ Widget saved successfully! ID: ${chartId}`);
+                    } else {
+                      console.error(`  ❌ Widget save failed:`, saveResult.error || saveResult.message);
+                    }
+                  } else {
+                    console.warn(`  ⚠️ Unexpected save result format:`, typeof saveResult, saveResult);
                   }
                 }
               }
             }
           }
+        } else {
+          console.warn('⚠️ No steps found in chart result');
         }
+        
+        console.log(`📊 Extraction complete:`, {
+          chartConfig: !!chartConfig,
+          chartType,
+          chartId,
+          saveSuccess
+        });
 
         if (!chartConfig) {
+          console.error('❌ No chart config found after processing steps');
           return {
             success: false,
             error: 'Failed to generate chart configuration',
             aiResponse: chartResult.text,
+            debug: {
+              stepsCount: chartResult.steps?.length || 0,
+              toolResultsCount: chartResult.steps?.reduce((sum, s) => sum + (s.toolResults?.length || 0), 0) || 0
+            }
           };
         }
 
-        return {
+        const result = {
           success: true,
           chartId: chartId || `generated-${Date.now()}`,
           chartType,
           chartConfig,
           saved: saveSuccess,
-          message: `Successfully generated ${chartType} chart${saveSuccess ? ` and saved with ID: ${chartId}` : ''}`,
+          message: `Successfully generated ${chartType} chart${saveSuccess ? ` and saved with ID: ${chartId}` : ' (but NOT saved to dashboard - saveDashboardWidget may have failed)'}`,
           dataRows: rowCount,
         };
+        
+        console.log('✅ generate_chart returning:', {
+          success: result.success,
+          chartType: result.chartType,
+          saved: result.saved,
+          chartId: result.chartId,
+          message: result.message
+        });
+        
+        return result;
       } catch (error) {
         console.error('Chart generation error:', error);
         return {
@@ -419,6 +472,9 @@ Please analyze this data and create an appropriate chart visualization.
           console.log(`🎯 Found widget: ${targetWidget.title || targetWidget.type || 'Untitled'} (index: ${widgetIndex})`);
 
           // Use the update tool
+          if (!updateDashboardWidget.execute) {
+            throw new Error('updateDashboardWidget.execute is not available');
+          }
           const updateResult = await updateDashboardWidget.execute({
             dashboardId: context.dashboardId,
             widgetId: targetWidget.id,
@@ -468,6 +524,9 @@ Please analyze this data and create an appropriate chart visualization.
 
       try {
         // Use the delete tool
+        if (!deleteDashboardWidget.execute) {
+          throw new Error('deleteDashboardWidget.execute is not available');
+        }
         const deleteResult = await deleteDashboardWidget.execute({
           dashboardId: context.dashboardId,
           widgetIdentifier,
