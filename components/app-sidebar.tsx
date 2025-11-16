@@ -41,10 +41,10 @@ interface SidebarData {
 }
 
 const truncateTitle = (title: string) => {
-  if (title.length <= 35) {
+  if (title.length <= 30) {
     return title
   }
-  return `${title.slice(0, 35)}...`
+  return `${title.slice(0, 30)}...`
 }
 
 // This is sample data.
