@@ -297,7 +297,6 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         // Save assistant message to database after streaming completes
         const cleanedContent = cleanMessageContent(fullContent)
         saveMessageToDb("assistant", cleanedContent)
-      }
 
         // Check if a chart was generated or updated (look for chart/widget-related keywords in response)
         const chartModified =
