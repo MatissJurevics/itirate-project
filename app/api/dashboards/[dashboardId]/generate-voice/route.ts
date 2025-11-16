@@ -11,7 +11,7 @@ interface RequestBody {
 
 export async function POST(
   req: Request,
-  { params }: { params: { dashboardId: string } }
+  { params }: { params: Promise<{ dashboardId: string }> }
 ) {
   try {
     const { dashboardId } = await params;
@@ -199,7 +199,7 @@ export async function POST(
 
 export async function GET(
   req: Request,
-  { params }: { params: { dashboardId: string } }
+  { params }: { params: Promise<{ dashboardId: string }> }
 ) {
   try {
     const { dashboardId } = await params;

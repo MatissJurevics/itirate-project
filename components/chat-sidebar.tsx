@@ -240,7 +240,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
   return (
     <div
       className={cn(
-        "fixed right-0 top-0 flex flex-col bg-background border-l transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-screen z-50",
+        "fixed right-0 top-0 fixed top-0 right-0 bottom-0 flex flex-col bg-background border-l transition-all duration-300 ease-in-out overflow-hidden z-50 h-screen z-50",
         open ? "w-[24rem] opacity-100" : "w-0 opacity-0 border-0"
       )}
     >
