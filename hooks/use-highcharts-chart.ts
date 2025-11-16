@@ -3,6 +3,125 @@ import Highcharts from "highcharts"
 import type { ChartType } from "@/lib/charts/types"
 import { initializeHighchartsModules } from "@/lib/charts/init-highcharts"
 
+/**
+ * Clean chart options by removing invalid function references
+ * Functions get lost during JSON serialization/deserialization, so we need to remove
+ * properties that should be functions but are strings/null/undefined
+ */
+function cleanChartOptions(options: Highcharts.Options): Highcharts.Options {
+  if (!options || typeof options !== 'object') {
+    return options
+  }
+
+  // Deep clone to avoid mutating the original
+  // Use a try-catch to handle circular references or other serialization issues
+  let cleaned: any
+  try {
+    cleaned = JSON.parse(JSON.stringify(options)) as any
+  } catch (error) {
+    // If serialization fails, try a shallow clone approach
+    console.warn('Failed to deep clone chart options, using shallow clone:', error)
+    cleaned = { ...options } as any
+  }
+
+  // Remove invalid formatter functions from tooltip
+  if (cleaned.tooltip) {
+    if (typeof cleaned.tooltip.formatter !== 'function') {
+      delete cleaned.tooltip.formatter
+    }
+    // Also check for pointFormatter
+    if (typeof cleaned.tooltip.pointFormatter !== 'function') {
+      delete cleaned.tooltip.pointFormatter
+    }
+  }
+
+  // Remove invalid formatter functions from plotOptions
+  if (cleaned.plotOptions) {
+    Object.keys(cleaned.plotOptions).forEach((key) => {
+      const plotOption = cleaned.plotOptions[key]
+      if (plotOption && typeof plotOption === 'object') {
+        // Remove invalid formatters from series-level plotOptions
+        if (typeof plotOption.dataLabels?.formatter !== 'function') {
+          if (plotOption.dataLabels) {
+            delete plotOption.dataLabels.formatter
+          }
+        }
+        if (typeof plotOption.tooltip?.formatter !== 'function') {
+          if (plotOption.tooltip) {
+            delete plotOption.tooltip.formatter
+          }
+        }
+      }
+    })
+  }
+
+  // Clean series array
+  if (Array.isArray(cleaned.series)) {
+    cleaned.series = cleaned.series.map((series: any) => {
+      if (series && typeof series === 'object') {
+        // Remove invalid formatters from series
+        if (typeof series.dataLabels?.formatter !== 'function') {
+          if (series.dataLabels) {
+            delete series.dataLabels.formatter
+          }
+        }
+        if (typeof series.tooltip?.formatter !== 'function') {
+          if (series.tooltip) {
+            delete series.tooltip.formatter
+          }
+        }
+        // Remove any other function-like properties that aren't actually functions
+        Object.keys(series).forEach((key) => {
+          if (key.includes('formatter') || key.includes('callback')) {
+            if (typeof series[key] !== 'function' && series[key] !== null && series[key] !== undefined) {
+              delete series[key]
+            }
+          }
+        })
+      }
+      return series
+    })
+  }
+
+  // Clean xAxis and yAxis arrays
+  ['xAxis', 'yAxis'].forEach((axisKey) => {
+    if (Array.isArray(cleaned[axisKey])) {
+      cleaned[axisKey] = cleaned[axisKey].map((axis: any) => {
+        if (axis && typeof axis === 'object') {
+          if (typeof axis.labels?.formatter !== 'function') {
+            if (axis.labels) {
+              delete axis.labels.formatter
+            }
+          }
+          if (typeof axis.title?.style !== 'function') {
+            // style can be an object, so we only remove if it's not an object
+            if (axis.title && typeof axis.title.style !== 'object' && typeof axis.title.style !== 'function') {
+              delete axis.title.style
+            }
+          }
+        }
+        return axis
+      })
+    } else if (cleaned[axisKey] && typeof cleaned[axisKey] === 'object') {
+      const axis = cleaned[axisKey]
+      if (typeof axis.labels?.formatter !== 'function') {
+        if (axis.labels) {
+          delete axis.labels.formatter
+        }
+      }
+    }
+  })
+
+  // Clean legend
+  if (cleaned.legend && typeof cleaned.legend === 'object') {
+    if (typeof cleaned.legend.labelFormatter !== 'function') {
+      delete cleaned.legend.labelFormatter
+    }
+  }
+
+  return cleaned as Highcharts.Options
+}
+
 export const useHighchartsChart = (
   containerRef: React.RefObject<HTMLDivElement | null>,
   options: Highcharts.Options,
@@ -45,19 +164,22 @@ export const useHighchartsChart = (
       chartInstanceRef.current = null
     }
 
+    // Clean options to remove invalid function references
+    const cleanedOptions = cleanChartOptions(options)
+
     // Create new chart instance - use mapChart for map types if available
     if (isMapChart && (Highcharts as any).mapChart) {
       // For map charts, ensure map data is in options
       const mapOptions = {
-        ...options,
+        ...cleanedOptions,
         chart: {
-          ...(options.chart || {}),
+          ...(cleanedOptions.chart || {}),
           animation: false,
         },
         plotOptions: {
-          ...(options.plotOptions || {}),
+          ...(cleanedOptions.plotOptions || {}),
           series: {
-            ...((options.plotOptions as any)?.series || {}),
+            ...((cleanedOptions.plotOptions as any)?.series || {}),
             animation: false,
           },
         },
@@ -85,23 +207,35 @@ export const useHighchartsChart = (
         }
       }
       
-      chartInstanceRef.current = (Highcharts as any).mapChart(containerRef.current, mapOptions)
+      try {
+        chartInstanceRef.current = (Highcharts as any).mapChart(containerRef.current, mapOptions)
+      } catch (error) {
+        console.error('Error creating map chart:', error)
+        throw error
+      }
     } else {
       const chartOptions = {
-        ...options,
+        ...cleanedOptions,
         chart: {
-          ...(options.chart || {}),
+          ...(cleanedOptions.chart || {}),
           animation: false,
         },
         plotOptions: {
-          ...(options.plotOptions || {}),
+          ...(cleanedOptions.plotOptions || {}),
           series: {
-            ...((options.plotOptions as any)?.series || {}),
+            ...((cleanedOptions.plotOptions as any)?.series || {}),
             animation: false,
           },
         },
       }
-      chartInstanceRef.current = Highcharts.chart(containerRef.current, chartOptions)
+      
+      try {
+        chartInstanceRef.current = Highcharts.chart(containerRef.current, chartOptions)
+      } catch (error) {
+        console.error('Error creating chart:', error)
+        console.error('Chart options:', JSON.stringify(chartOptions, null, 2))
+        throw error
+      }
     }
 
     // Handle resize

@@ -279,19 +279,30 @@ export function PageContent({ id }: PageContentProps) {
           chartsError = chartsResult.error
           
           if (chartsError) {
-            // Check if error is due to missing column
+            // Check if error is due to missing column or table
             const errorMessage = chartsError.message || JSON.stringify(chartsError)
             const errorCode = chartsError.code || 'unknown'
             
-            console.error("Failed to fetch charts:", {
-              error: chartsError,
-              message: errorMessage,
-              details: chartsError.details,
-              hint: chartsError.hint,
-              code: errorCode,
-              dashboardId: id,
-              fullError: JSON.stringify(chartsError, null, 2)
-            })
+            // Only log as warning if it's a table/column not found error (expected)
+            const isExpectedError = errorMessage.includes('column') || 
+                                   errorMessage.includes('relation') || 
+                                   errorMessage.includes('does not exist') ||
+                                   errorCode === '42P01' || // relation does not exist
+                                   errorCode === '42703'    // column does not exist
+            
+            if (isExpectedError) {
+              console.warn("Charts table/column not found (this is expected if using widgets instead):", errorMessage)
+            } else {
+              console.error("Failed to fetch charts:", {
+                error: chartsError,
+                message: errorMessage,
+                details: chartsError.details,
+                hint: chartsError.hint,
+                code: errorCode,
+                dashboardId: id,
+                fullError: JSON.stringify(chartsError, null, 2)
+              })
+            }
             
             // If column doesn't exist, try without dashboard_id filter as fallback
             if (errorMessage.includes('column') && errorMessage.includes('dashboard_id')) {
