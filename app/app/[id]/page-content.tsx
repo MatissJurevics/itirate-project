@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { FileText, ChevronDown, ChevronUp, AlertCircle, Loader2 } from "lucide-react"
+import { FileText, ChevronDown, ChevronUp, AlertCircle, Plus, Sparkles } from "lucide-react"
 import { DatasetBadge } from "@/components/dataset-badge"
 import { DatasetSelectorPopover } from "@/components/dataset-selector-popover"
 import { toast } from "sonner"
@@ -380,7 +380,13 @@ export function PageContent({ id }: PageContentProps) {
             { label: dashboard?.title || "Loading..." }
           ]}
           actions={
-            <Button onClick={() => setIsChatOpen(true)} disabled={loading}>
+            <Button 
+              onClick={() => setIsChatOpen(true)} 
+              disabled={loading}
+              size="default"
+              className="gap-2 font-medium"
+            >
+              <Sparkles className="h-4 w-4" />
               New Visualisation
             </Button>
           }

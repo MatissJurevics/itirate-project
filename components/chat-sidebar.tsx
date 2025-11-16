@@ -255,10 +255,10 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         open ? "w-[24rem] opacity-100" : "w-0 opacity-0 border-0"
       )}
     >
-      <div className="flex h-16 shrink-0 items-center justify-between px-4">
-        <h2 className="text-2xl font-fancy">Procure AI</h2>
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 min-w-0">
+        <h2 className="text-2xl font-fancy whitespace-nowrap">Procure AI</h2>
         {csvId && (
-          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+          <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">
             Dataset: {csvId}
           </p>
         )}
@@ -266,7 +266,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
           variant="ghost"
           size="icon"
           onClick={() => onOpenChange(false)}
-          className="h-8 w-8"
+          className="h-8 w-8 shrink-0"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
@@ -291,13 +291,13 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    "group relative max-w-[75%] px-4 py-2.5 rounded-2xl",
+                    "group relative max-w-[75%] min-w-0 px-4 py-2.5 rounded-2xl overflow-hidden",
                     message.role === "user"
                       ? "bg-primary text-primary-foreground rounded-br-sm"
                       : "bg-muted text-foreground rounded-bl-sm"
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                     {message.content ? (
                       cleanMessageContent(message.content)
                     ) : isLoading && message.role === "assistant" ? (

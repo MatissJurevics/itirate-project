@@ -24,7 +24,7 @@ interface DashboardChartProps {
   showCopyButton?: boolean
 }
 
-export function DashboardChart({
+export const DashboardChart = React.forwardRef<any, DashboardChartProps>(function DashboardChart({
   type,
   data,
   title,
@@ -35,7 +35,7 @@ export function DashboardChart({
   projection,
   highchartsConfig,
   showCopyButton = true,
-}: DashboardChartProps) {
+}, chartInstanceRef) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const [isHovered, setIsHovered] = React.useState(false)
   const chartHeight = useChartHeight(containerRef, height)
@@ -103,8 +103,11 @@ export function DashboardChart({
   }, [highchartsConfig, type, data, title, categories, chartHeight, mapData, mapType, projection, loadedMapData])
 
   // Create and manage chart instance
-  const chartInstanceRef = useHighchartsChart(containerRef, options, type, loadedMapData, highchartsConfig)
-  const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartInstanceRef)
+  const internalChartInstanceRef = useHighchartsChart(containerRef, options, type, loadedMapData, highchartsConfig)
+  const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(internalChartInstanceRef)
+
+  // Expose chart instance via forwarded ref
+  React.useImperativeHandle(chartInstanceRef, () => internalChartInstanceRef.current, [internalChartInstanceRef])
 
   const handleCopy = React.useCallback(async () => {
     await copyChartToClipboard()
@@ -151,4 +154,4 @@ export function DashboardChart({
       )}
     </div>
   )
-}
+})

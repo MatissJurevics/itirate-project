@@ -3,8 +3,10 @@
 import * as React from "react"
 import { Board, BoardItem } from "@cloudscape-design/board-components"
 import type { BoardProps } from "@cloudscape-design/board-components"
+import { Button } from "@cloudscape-design/components"
 import { DashboardChart } from "@/components/dashboard-chart"
 import type { ChartType } from "@/lib/charts/types"
+import { useCopyChartToClipboard } from "@/hooks/use-copy-chart"
 
 export interface Widget {
   id: string
@@ -25,45 +27,49 @@ export interface Widget {
 }
 
 // Memoized chart component to prevent re-renders during drag/resize
-const MemoizedChartWrapper = React.memo(({ widget }: { widget: Widget }) => (
-  <div
-    style={{
-      width: "100%",
-      height: "100%",
-      minHeight: "200px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-    }}
-  >
-    <DashboardChart
-      highchartsConfig={widget.highchartsConfig}
-      type={widget.type || widget.widgetType}
-      data={widget.data}
-      title={widget.title}
-      categories={widget.categories}
-      mapData={widget.mapData}
-      mapType={widget.mapType}
-      projection={widget.projection}
-      showCopyButton={true}
-    />
-  </div>
-), (prevProps, nextProps) => {
-  // Custom comparison: only re-render if widget data actually changed
-  return (
-    prevProps.widget.id === nextProps.widget.id &&
-    prevProps.widget.highchartsConfig === nextProps.widget.highchartsConfig &&
-    prevProps.widget.type === nextProps.widget.type &&
-    prevProps.widget.widgetType === nextProps.widget.widgetType &&
-    prevProps.widget.data === nextProps.widget.data &&
-    prevProps.widget.title === nextProps.widget.title &&
-    prevProps.widget.categories === nextProps.widget.categories &&
-    prevProps.widget.mapData === nextProps.widget.mapData &&
-    prevProps.widget.mapType === nextProps.widget.mapType &&
-    prevProps.widget.projection === nextProps.widget.projection
-  )
-})
+const MemoizedChartWrapper = React.memo(
+  React.forwardRef<any, { widget: Widget }>(({ widget }, ref) => (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        minHeight: "200px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+      }}
+    >
+      <DashboardChart
+        ref={ref}
+        highchartsConfig={widget.highchartsConfig}
+        type={widget.type || widget.widgetType}
+        data={widget.data}
+        title={widget.title}
+        categories={widget.categories}
+        mapData={widget.mapData}
+        mapType={widget.mapType}
+        projection={widget.projection}
+        showCopyButton={false}
+      />
+    </div>
+  )),
+  (prevProps, nextProps) => {
+    // Custom comparison: only re-render if widget data actually changed
+    return (
+      prevProps.widget.id === nextProps.widget.id &&
+      prevProps.widget.highchartsConfig === nextProps.widget.highchartsConfig &&
+      prevProps.widget.type === nextProps.widget.type &&
+      prevProps.widget.widgetType === nextProps.widget.widgetType &&
+      prevProps.widget.data === nextProps.widget.data &&
+      prevProps.widget.title === nextProps.widget.title &&
+      prevProps.widget.categories === nextProps.widget.categories &&
+      prevProps.widget.mapData === nextProps.widget.mapData &&
+      prevProps.widget.mapType === nextProps.widget.mapType &&
+      prevProps.widget.projection === nextProps.widget.projection
+    )
+  }
+)
 
 interface CloudscapeBoardDashboardProps {
   widgets: Widget[]
@@ -138,9 +144,27 @@ export function CloudscapeBoardDashboard({
       const widget = item.data || widgetsMap.get(item.id)
       if (!widget) return null
 
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const chartRef = React.useRef<any>(null)
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartRef)
+
+      const handleCopy = async () => {
+        await copyChartToClipboard()
+      }
+
       return (
         <BoardItem
           header={widget.title || "Chart"}
+          settings={
+            <Button
+              variant="icon"
+              iconName={copySuccess ? "check" : "copy"}
+              onClick={handleCopy}
+              loading={isCopying}
+              ariaLabel="Copy chart to clipboard"
+            />
+          }
           i18nStrings={{
             dragHandleAriaLabel: "Drag handle",
             dragHandleAriaDescription:
@@ -150,7 +174,7 @@ export function CloudscapeBoardDashboard({
               "Use arrow keys to resize the item, Space to complete resize, Escape to cancel resize.",
           }}
         >
-          <MemoizedChartWrapper widget={widget} />
+          <MemoizedChartWrapper ref={chartRef} widget={widget} />
         </BoardItem>
       )
     },

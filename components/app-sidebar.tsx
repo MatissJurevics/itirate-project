@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import Link from "next/link"
-import { GalleryVerticalEnd } from "lucide-react"
+import { GalleryVerticalEnd, Plus } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 import {
@@ -16,6 +16,13 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface SidebarItem {
   title: string;
@@ -103,20 +110,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar variant="sidebar">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href="/">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
-                  <GalleryVerticalEnd className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-fancy text-lg">Procure</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex flex-col gap-3 p-2">
+          {/* Logo/Branding */}
+          <div className="px-2 py-1">
+            <span className="font-fancy text-2xl">Procure</span>
+          </div>
+          
+          {/* Main Action Button */}
+          <Button asChild className="w-full justify-start gap-2">
+            <Link href="/app">
+              <Plus className="h-4 w-4" />
+              Create New Dashboard
+            </Link>
+          </Button>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -132,11 +139,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuSub className="ml-0 border-l-0 px-1.5">
                     {item.items.map((item) => (
                       <SidebarMenuSubItem key={item.title}>
-                        <SidebarMenuSubButton asChild isActive={false}>
-                          <Link href={item.url} title={item.title}>
-                            {truncateTitle(item.title)}
-                          </Link>
-                        </SidebarMenuSubButton>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <SidebarMenuSubButton asChild isActive={false} className="w-full">
+                                <Link href={item.url} className="block">
+                                  <span className="truncate">{item.title}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" align="center">
+                              <p>{item.title}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </SidebarMenuSubItem>
                     ))}
                   </SidebarMenuSub>
