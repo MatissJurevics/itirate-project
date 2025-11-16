@@ -117,6 +117,7 @@ export function PageContent({ id }: PageContentProps) {
       try {
         const supabase = createClient()
 
+        // Fetch dashboard metadata
         const { data, error } = await supabase
           .from("dashboards")
           .select("*")
@@ -130,22 +131,46 @@ export function PageContent({ id }: PageContentProps) {
           return
         }
 
+        // Fetch charts from the charts table for this dashboard
+        const { data: chartsData, error: chartsError } = await supabase
+          .from("charts")
+          .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
+          .eq("dashboard_id", id)
+          .order("created_at", { ascending: true })
+
+        if (chartsError) {
+          console.error("Failed to fetch charts:", chartsError)
+        }
+
+        // Convert charts from database to widget format
+        const chartsAsWidgets = (chartsData || []).map((chart: any) => ({
+          id: chart.id,
+          chartId: chart.id,
+          highchartsConfig: chart.chart_options,
+          chartType: chart.chart_type,
+          type: chart.chart_type,
+          sqlQuery: chart.sql_query,
+          userPrompt: chart.user_prompt,
+          createdAt: chart.created_at
+        }))
+
+        // Combine dashboard widgets (legacy) with charts from charts table
+        const legacyWidgets = (data.widgets || []).map((widget: any) => {
+          const isApiResponseFormat =
+            (widget.chartId !== undefined || widget.success !== undefined) ||
+            (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
+            (widget.dataPreview !== undefined && widget.chartType !== undefined)
+
+          if (isApiResponseFormat) {
+            return adaptChartData(widget as ChartApiResponse)
+          }
+
+          return widget
+        })
+
         const normalizedData = {
           ...data,
-          widgets: ensureWidgetIds(
-            (data.widgets || []).map((widget: any) => {
-              const isApiResponseFormat =
-                (widget.chartId !== undefined || widget.success !== undefined) ||
-                (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
-                (widget.dataPreview !== undefined && widget.chartType !== undefined)
-
-              if (isApiResponseFormat) {
-                return adaptChartData(widget as ChartApiResponse)
-              }
-
-              return widget
-            })
-          ),
+          widgets: ensureWidgetIds([...legacyWidgets, ...chartsAsWidgets]),
         }
 
         setDashboard(normalizedData)
@@ -162,6 +187,99 @@ export function PageContent({ id }: PageContentProps) {
 
   const audioUrl = dashboard?.audio || null
   const transcript = dashboard?.transcript || null
+
+  // Function to reload charts when a new one is generated
+  const reloadCharts = React.useCallback(async () => {
+    try {
+      const supabase = createClient()
+      const { data: chartsData, error: chartsError } = await supabase
+        .from("charts")
+        .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
+        .eq("dashboard_id", id)
+        .order("created_at", { ascending: true })
+
+      if (chartsError) {
+        console.error("Failed to reload charts:", chartsError)
+        return
+      }
+
+      const chartsAsWidgets = (chartsData || []).map((chart: any) => ({
+        id: chart.id,
+        chartId: chart.id,
+        highchartsConfig: chart.chart_options,
+        chartType: chart.chart_type,
+        type: chart.chart_type,
+        sqlQuery: chart.sql_query,
+        userPrompt: chart.user_prompt,
+        createdAt: chart.created_at
+      }))
+
+      setDashboard((prev: any) => ({
+        ...prev,
+        widgets: ensureWidgetIds(chartsAsWidgets)
+      }))
+    } catch (error) {
+      console.error("Error reloading charts:", error)
+    }
+  }, [id, ensureWidgetIds])
+
+  // Auto-process initial prompt on page load (without opening chat)
+  const [hasProcessedInitialPrompt, setHasProcessedInitialPrompt] = React.useState(false)
+  const [isProcessingInitialPrompt, setIsProcessingInitialPrompt] = React.useState(false)
+
+  React.useEffect(() => {
+    const processInitialPrompt = async () => {
+      if (!dashboard || !initialPrompt || !csvTableName || loading || hasProcessedInitialPrompt || isProcessingInitialPrompt) {
+        return
+      }
+
+      const widgets = dashboard.widgets || []
+      // Only auto-process if there are no charts yet
+      if (widgets.length > 0) {
+        setHasProcessedInitialPrompt(true)
+        return
+      }
+
+      setIsProcessingInitialPrompt(true)
+      console.log('Auto-processing initial prompt:', initialPrompt)
+
+      try {
+        const response = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: initialPrompt }],
+            csvId: csvTableName,
+            dashboardId: id
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`)
+        }
+
+        // Stream the response but don't display it (just let it complete)
+        const reader = response.body?.getReader()
+        if (reader) {
+          while (true) {
+            const { done } = await reader.read()
+            if (done) break
+          }
+        }
+
+        console.log('Initial prompt processed, reloading charts...')
+        // Reload charts after processing
+        setTimeout(() => reloadCharts(), 500)
+      } catch (error) {
+        console.error('Failed to process initial prompt:', error)
+      } finally {
+        setHasProcessedInitialPrompt(true)
+        setIsProcessingInitialPrompt(false)
+      }
+    }
+
+    processInitialPrompt()
+  }, [dashboard, initialPrompt, csvTableName, loading, hasProcessedInitialPrompt, isProcessingInitialPrompt, id, reloadCharts])
 
   return (
     <div className="flex h-full w-full overflow-hidden relative">
@@ -332,6 +450,7 @@ export function PageContent({ id }: PageContentProps) {
         csvId={csvTableName}
         initialPrompt={initialPrompt}
         dashboardId={id}
+        onChartGenerated={reloadCharts}
       />
     </div>
   )

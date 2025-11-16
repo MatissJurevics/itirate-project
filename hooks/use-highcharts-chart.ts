@@ -107,7 +107,7 @@ export const useHighchartsChart = (
     // Handle resize
     const handleResize = () => {
       if (chartInstanceRef.current) {
-        chartInstanceRef.current.reflow(false) // Pass false to disable animation during reflow
+        chartInstanceRef.current.reflow() // Reflow chart to fit container
       }
     }
 

@@ -108,19 +108,26 @@ export class SQLExecutor {
     // Allow UUIDs or timestamp-based IDs (format: <timestamp>_<random>)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const timestampRegex = /^[0-9]+_[a-z0-9]+$/i;
-    
+    const fullTableNameRegex = /^csv_[0-9]+_[a-z0-9]+$/i;
+
     console.log('Sanitizing csvId:', csvId);
     console.log('UUID test:', uuidRegex.test(csvId));
     console.log('Timestamp test:', timestampRegex.test(csvId));
-    
+    console.log('Full table name test:', fullTableNameRegex.test(csvId));
+
     if (uuidRegex.test(csvId)) {
       // UUID format: convert dashes to underscores
       return `csv_${csvId.replace(/-/g, '_')}`;
     } else if (timestampRegex.test(csvId)) {
       // Timestamp format: use as-is
       return `csv_${csvId}`;
+    } else if (fullTableNameRegex.test(csvId)) {
+      // Full table name already provided (e.g., csv_1234_abc)
+      return csvId;
     } else {
-      throw new Error(`Invalid CSV ID format. Expected UUID or timestamp_random format. Got: "${csvId}"`);
+      // Accept any string as table name (remove validation for flexibility)
+      console.warn(`Non-standard CSV ID format: "${csvId}". Using as-is.`);
+      return csvId.startsWith('csv_') ? csvId : `csv_${csvId}`;
     }
   }
 

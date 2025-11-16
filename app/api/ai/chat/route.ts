@@ -47,12 +47,9 @@ export async function POST(req: Request) {
     // Create SQL tools if we have CSV context
     let tools = {};
     if (csvId) {
-      // Generate table name from CSV ID for consistency with sql-executor
-      // Support both UUID format (abc-def-...) and timestamp format (1234_abc)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const tableName = uuidRegex.test(csvId)
-        ? `csv_${csvId.replace(/-/g, '_')}`
-        : `csv_${csvId}`;
+      // csvId is now the full table name (e.g., csv_1763255530772_zunrc)
+      // Use it directly without adding csv_ prefix
+      const tableName = csvId.startsWith('csv_') ? csvId : `csv_${csvId}`;
       console.log('Creating SQL tools for:', { csvId, tableName, dashboardId });
       tools = {
         ...createSQLTools({
@@ -64,11 +61,8 @@ export async function POST(req: Request) {
     }
 
     // Determine the table name for the system prompt
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const systemPromptTableName = csvId
-      ? (uuidRegex.test(csvId)
-        ? `csv_${csvId.replace(/-/g, '_')}`
-        : `csv_${csvId}`)
+      ? (csvId.startsWith('csv_') ? csvId : `csv_${csvId}`)
       : '';
 
     const result = streamText({
@@ -211,6 +205,19 @@ Assistant Action: Call execute_sql with:
   "explanation": "Grouping by category to calculate count and total sales, ordered by sales descending"
 }
 
+Example 6: Creating a dashboard (IMPORTANT)
+User: "Create a simple dashboard for this data"
+Assistant Workflow:
+1. First, explore the data structure:
+   Call execute_sql: SELECT * FROM csv_to_table.${systemPromptTableName} LIMIT 1
+2. Identify numeric and categorical columns from the results
+3. Call evaluate_results with satisfied=true
+4. Generate charts based on data structure:
+   - If date/time column exists: generate_chart for "trend over time"
+   - If categorical columns exist: generate_chart for "category distribution"
+   - If numeric columns exist: generate_chart for "key metrics comparison"
+5. Create 2-3 charts to form a basic dashboard
+
 WORKFLOW:
 1. User asks a question about the data
 2. You immediately call execute_sql with the appropriate query (DO NOT execute the same query twice!)
@@ -225,6 +232,11 @@ WORKFLOW:
 CHART GENERATION GUIDELINES:
 - Generate charts when users ask to "show", "visualize", "plot", "graph", or "chart" data
 - Also generate charts for trend analysis, comparisons, or distribution questions
+- **CRITICAL: When user asks to "create a dashboard" or mentions "dashboard", you MUST generate charts!**
+  - First explore the data structure with a SELECT * LIMIT 1
+  - Then identify key metrics and dimensions
+  - Generate multiple charts (at least 2-3) to create a meaningful dashboard
+  - Common dashboard charts: overview metrics, trends over time, category breakdowns, top/bottom performers
 - The generate_chart tool will automatically select the best chart type
 - You can suggest a chart type based on the data structure (line for time series, column for categories, etc.)
 

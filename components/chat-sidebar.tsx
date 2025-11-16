@@ -25,9 +25,10 @@ interface ChatSidebarProps {
   csvId?: string
   initialPrompt?: string
   dashboardId?: string
+  onChartGenerated?: () => void
 }
 
-export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboardId }: ChatSidebarProps) {
+export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboardId, onChartGenerated }: ChatSidebarProps) {
   const [mounted, setMounted] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([])
   const [inputValue, setInputValue] = React.useState("")
@@ -183,6 +184,18 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
       // Save assistant message to database after streaming completes
       if (fullContent) {
         saveMessageToDb("assistant", fullContent)
+
+        // Check if a chart was generated (look for chart-related keywords in response)
+        const chartGenerated =
+          fullContent.includes("chart") &&
+          (fullContent.includes("generated") || fullContent.includes("created") || fullContent.includes("saved"))
+
+        if (chartGenerated && onChartGenerated) {
+          // Small delay to ensure database write is complete
+          setTimeout(() => {
+            onChartGenerated()
+          }, 500)
+        }
       }
     } catch (error) {
       console.error('Chat error:', error)

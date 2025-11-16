@@ -127,7 +127,7 @@ Call generateColumnChart with the category data above to create a column chart!
         console.log('📊 Chart Type:', chartType);
         console.log('🏷️  Dashboard ID:', dashboardId);
 
-        const saveResult = await saveDashboardWidget.execute({
+        const saveResult = await saveDashboardWidget.execute!({
           dashboardId,
           sqlQuery,
           chartOptions: chartConfig,
