@@ -157,7 +157,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt }: ChatSi
   return (
     <div
       className={cn(
-        "flex flex-col bg-background border-l shadow-lg transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+        "flex flex-col bg-background border-l transition-all duration-300 ease-in-out overflow-hidden shrink-0",
         open ? "w-[24rem] opacity-100" : "w-0 opacity-0 border-0"
       )}
       style={{
@@ -199,7 +199,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt }: ChatSi
             )}
           >
             {message.role === "assistant" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-muted text-xs font-medium">
                 AI
               </div>
             )}
@@ -207,10 +207,10 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt }: ChatSi
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    "group relative max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm",
+                    "group relative max-w-[75%] px-4 py-2.5",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                   )}
                 >
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -236,7 +236,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt }: ChatSi
               </TooltipContent>
             </Tooltip>
             {message.role === "user" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary text-primary-foreground text-xs font-medium">
                 You
               </div>
             )}

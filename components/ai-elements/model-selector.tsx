@@ -188,7 +188,7 @@ export const ModelSelectorLogoGroup = ({
 }: ModelSelectorLogoGroupProps) => (
   <div
     className={cn(
-      "-space-x-1 flex shrink-0 items-center [&>img]:rounded-full [&>img]:bg-background [&>img]:p-px [&>img]:ring-1 [&>img]:ring-border",
+       "-space-x-1 flex shrink-0 items-center [&>img]:bg-background [&>img]:p-px [&>img]:ring-1 [&>img]:ring-border",
       className
     )}
     {...props}

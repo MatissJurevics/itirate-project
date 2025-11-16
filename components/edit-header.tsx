@@ -14,11 +14,11 @@ import {
 import { Button } from "@/components/ui/button"
 
 interface EditHeaderProps {
-  id: string
+  name: string
   onChatOpen: () => void
 }
 
-export function EditHeader({ id, onChatOpen }: EditHeaderProps) {
+export function EditHeader({ name, onChatOpen }: EditHeaderProps) {
   return (
     <header className="flex h-16 shrink-0 w-full items-center gap-2 px-4">
       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -31,12 +31,12 @@ export function EditHeader({ id, onChatOpen }: EditHeaderProps) {
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
               <BreadcrumbLink href="#">
-                Building Your Application
+                Dashboards
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
-              <BreadcrumbPage>{id}</BreadcrumbPage>
+              <BreadcrumbPage>{name}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

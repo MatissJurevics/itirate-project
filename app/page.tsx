@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from 'next/navigation'
 import { Loader2, PaperclipIcon, SendIcon, X, FileText } from 'lucide-react'
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
 import {
   PromptInput,
   PromptInputBody,
@@ -25,9 +27,11 @@ export default function Home() {
     x: 0,
     y: 0
   })
+  const [isMounted, setIsMounted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setIsMounted(true)
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({
         x: e.clientX,
@@ -180,85 +184,94 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex h-screen items-center justify-center overflow-hidden bg-background">
-      {/* Dot Matrix Background */}
-      <div className="absolute h-full w-full bg-[radial-gradient(rgb(223_214_201)_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
-
-      {/* Cursor Reactive Overlay */}
-      <div
-        className="absolute h-full w-full bg-[radial-gradient(rgb(202_232_203)_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none transition-opacity duration-150"
-        style={{
-          maskImage: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)`,
-          WebkitMaskImage: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)`
-        }}
-      ></div>
-
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={handleFileSelect}
+    <><header className="flex h-16 shrink-0 items-center gap-2 px-4">
+      <SidebarTrigger className="-ml-1" />
+      <Separator
+        orientation="vertical"
+        className="mr-2 data-[orientation=vertical]:h-4"
       />
+    </header>
+      <div className="relative flex h-screen items-center justify-center overflow-hidden bg-background">
+        {/* Dot Matrix Background */}
+        <div className="absolute h-full w-full bg-[radial-gradient(rgb(223_214_201)_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
 
-      {/* Centered Content */}
-      <div className="relative z-10 w-full max-w-3xl mx-auto px-6">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center space-y-6 animate-fade-in">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg text-muted-foreground">{loadingStatus || 'Processing...'}</p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Welcome Text */}
-            <div className="text-center space-y-3 animate-fade-in">
-              <h1 className="text-5xl font-bold text-foreground">Welcome to Procure</h1>
-              <h3 className="text-xl text-center text-muted-foreground">
-                Generate dynamic dashboards based on your procurement data.
-              </h3>
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+
+        {/* Cursor Reactive Overlay */}
+        <div
+          className="absolute h-full w-full bg-[radial-gradient(rgb(202_232_203)_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none transition-opacity duration-150"
+          style={{
+            opacity: isMounted ? 1 : 0,
+            maskImage: isMounted ? `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)` : undefined,
+            WebkitMaskImage: isMounted ? `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, black 0%, transparent 100%)` : undefined
+          }}
+          suppressHydrationWarning
+        ></div>
+
+        {/* Centered Content */}
+        <div className="relative z-10 w-full max-w-3xl mx-auto px-6">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center space-y-6 animate-fade-in">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg text-muted-foreground">{loadingStatus || 'Processing...'}</p>
             </div>
+          ) : (
+            <div className="space-y-8">
+              {/* Welcome Text */}
+              <div className="text-center space-y-3 animate-fade-in">
+                <h1 className="text-5xl font-bold text-foreground">Welcome to Procure</h1>
+                <h3 className="text-xl text-center text-muted-foreground">
+                  Generate dynamic dashboards based on your procurement data.
+                </h3>
+              </div>
 
-            {/* Input Area */}
-            <div className="space-y-2">
-              {selectedFile && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-accent/50 rounded-lg border border-border">
-                  <FileText className="size-4 text-muted-foreground" />
-                  <span className="text-sm text-foreground flex-1">{selectedFile.name}</span>
-                  <button
-                    onClick={handleRemoveFile}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-              )}
-              <PromptInput onSubmit={handleSubmit}>
-                <PromptInputBody>
-                  <PromptInputTextarea
-                    placeholder="What type of dashboard would you like?"
-                    className="min-h-[24px] max-h-[200px] text-foreground placeholder:text-muted-foreground"
-                  />
-                </PromptInputBody>
-                <PromptInputFooter>
-                  <PromptInputTools>
-                    <PromptInputButton
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-muted-foreground hover:text-foreground bg-transparent"
-                      disabled={isLoading}
+              {/* Input Area */}
+              <div className="space-y-2">
+                {selectedFile && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-accent/50 border border-border">
+                    <FileText className="size-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground flex-1">{selectedFile.name}</span>
+                    <button
+                      onClick={handleRemoveFile}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      <PaperclipIcon className="size-5" />
-                    </PromptInputButton>
-                  </PromptInputTools>
-                  <PromptInputSubmit className="bg-gradient-primary hover:brightness-90 rounded-xl">
-                    <SendIcon className="size-4" />
-                  </PromptInputSubmit>
-                </PromptInputFooter>
-              </PromptInput>
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
+                <PromptInput onSubmit={handleSubmit}>
+                  <PromptInputBody>
+                    <PromptInputTextarea
+                      placeholder="What type of dashboard would you like?"
+                      className="min-h-[24px] max-h-[200px] text-foreground placeholder:text-muted-foreground"
+                    />
+                  </PromptInputBody>
+                  <PromptInputFooter>
+                    <PromptInputTools>
+                      <PromptInputButton
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-muted-foreground hover:text-foreground bg-transparent"
+                        disabled={isLoading}
+                      >
+                        <PaperclipIcon className="size-5" />
+                      </PromptInputButton>
+                    </PromptInputTools>
+                    <PromptInputSubmit className="bg-gradient-primary hover:brightness-90">
+                      <SendIcon className="size-4" />
+                    </PromptInputSubmit>
+                  </PromptInputFooter>
+                </PromptInput>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+        </div>
+      </div></>
   )
 }
