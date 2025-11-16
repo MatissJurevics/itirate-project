@@ -296,78 +296,6 @@ export function PageContent({ id }: PageContentProps) {
           return
         }
 
-        // Fetch charts from the charts table for this dashboard
-        let chartsData: any[] = []
-        let chartsError: any = null
-        
-        try {
-          const chartsResult = await supabase
-            .from("charts")
-            .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
-            .eq("dashboard_id", id)
-            .order("created_at", { ascending: true })
-          
-          chartsData = chartsResult.data || []
-          chartsError = chartsResult.error
-          
-          if (chartsError) {
-            // Check if error is due to missing column or table
-            const errorMessage = chartsError.message || JSON.stringify(chartsError)
-            const errorCode = chartsError.code || 'unknown'
-            
-            // Only log as warning if it's a table/column not found error (expected)
-            const isExpectedError = errorMessage.includes('column') || 
-                                   errorMessage.includes('relation') || 
-                                   errorMessage.includes('does not exist') ||
-                                   errorCode === '42P01' || // relation does not exist
-                                   errorCode === '42703'    // column does not exist
-            
-            if (isExpectedError) {
-              console.warn("Charts table/column not found (this is expected if using widgets instead):", errorMessage)
-            } else {
-              console.error("Failed to fetch charts:", {
-                error: chartsError,
-                message: errorMessage,
-                details: chartsError.details,
-                hint: chartsError.hint,
-                code: errorCode,
-                dashboardId: id,
-                fullError: JSON.stringify(chartsError, null, 2)
-              })
-            }
-            
-            // If column doesn't exist, try without dashboard_id filter as fallback
-            if (errorMessage.includes('column') && errorMessage.includes('dashboard_id')) {
-              console.warn("dashboard_id column may not exist, trying without filter...")
-              const fallbackResult = await supabase
-                .from("charts")
-                .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
-                .order("created_at", { ascending: true })
-              
-              if (!fallbackResult.error) {
-                chartsData = fallbackResult.data || []
-                chartsError = null
-                console.log("Fallback query succeeded, found", chartsData.length, "charts")
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Exception while fetching charts:", err)
-          chartsError = err
-        }
-
-        // Convert charts from database to widget format
-        const chartsAsWidgets = (chartsData || []).map((chart: any) => ({
-          id: chart.id,
-          chartId: chart.id,
-          highchartsConfig: chart.chart_options,
-          chartType: chart.chart_type,
-          type: chart.chart_type,
-          sqlQuery: chart.sql_query,
-          userPrompt: chart.user_prompt,
-          createdAt: chart.created_at
-        }))
-
         // Combine dashboard widgets (legacy) with charts from charts table
         const legacyWidgets = convertStoredWidgets(data.widgets || [])
 
@@ -491,8 +419,8 @@ export function PageContent({ id }: PageContentProps) {
               {dashboard && !loading && (
                 <GenerateVideoButton dashboardId={id} />
               )}
-              <Button 
-                onClick={() => setIsChatOpen(true)} 
+              <Button
+                onClick={() => setIsChatOpen(true)}
                 disabled={loading}
                 size="default"
                 className="gap-2 font-medium"
@@ -513,6 +441,8 @@ export function PageContent({ id }: PageContentProps) {
           <>
             <PageTitle
               editable={true}
+              createdAt={dashboard.created_at}
+              updatedAt={dashboard.updated_at}
               onEdit={async (newTitle: string) => {
                 try {
                   const supabase = createClient()
@@ -624,7 +554,7 @@ export function PageContent({ id }: PageContentProps) {
               <span className="text-sm text-muted-foreground">No audio available</span>
             </div>
           )}
-          <VoiceGenerationButton 
+          <VoiceGenerationButton
             dashboardId={id}
             className="h-8"
             onAudioGenerated={(audioUrl, transcript) => {
@@ -634,7 +564,7 @@ export function PageContent({ id }: PageContentProps) {
                 audio: audioUrl,
                 transcript: transcript,
               }));
-              
+
               // Keep audio bar expanded
               setIsAudioBarCollapsed(false);
             }}
