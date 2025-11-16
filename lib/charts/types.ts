@@ -34,5 +34,6 @@ export interface ChartConfigProps {
   mapData?: any
   mapType?: string
   loadedMapData?: any
+  projection?: string // Built-in projection name (e.g., 'EqualEarth', 'Orthographic', 'Mercator')
 }
 

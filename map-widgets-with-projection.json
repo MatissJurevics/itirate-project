@@ -1,0 +1,335 @@
+[
+  {
+    "id": "map-equalearth",
+    "title": "World Map - EqualEarth Projection",
+    "type": "map",
+    "mapType": "custom/world",
+    "projection": "EqualEarth",
+    "highchartsConfig": {
+      "chart": {
+        "type": "map",
+        "height": 400
+      },
+      "colorAxis": {
+        "min": 0,
+        "minColor": "#E0E7FF",
+        "maxColor": "#635BFF",
+        "stops": [
+          [0, "#E0E7FF"],
+          [0.5, "#A5B4FC"],
+          [1, "#635BFF"]
+        ]
+      },
+      "mapView": {
+        "projection": {
+          "name": "EqualEarth"
+        }
+      },
+      "series": [{
+        "type": "map",
+        "name": "Sales",
+        "data": [
+          {"hc-key": "us", "value": 450, "name": "United States"},
+          {"hc-key": "ca", "value": 320, "name": "Canada"},
+          {"hc-key": "mx", "value": 280, "name": "Mexico"},
+          {"hc-key": "gb", "value": 410, "name": "United Kingdom"},
+          {"hc-key": "fr", "value": 350, "name": "France"},
+          {"hc-key": "de", "value": 390, "name": "Germany"},
+          {"hc-key": "it", "value": 310, "name": "Italy"},
+          {"hc-key": "es", "value": 290, "name": "Spain"},
+          {"hc-key": "au", "value": 340, "name": "Australia"},
+          {"hc-key": "jp", "value": 420, "name": "Japan"},
+          {"hc-key": "cn", "value": 550, "name": "China"},
+          {"hc-key": "in", "value": 480, "name": "India"},
+          {"hc-key": "br", "value": 380, "name": "Brazil"},
+          {"hc-key": "ar", "value": 220, "name": "Argentina"}
+        ],
+        "joinBy": ["hc-key", "hc-key"],
+        "borderColor": "#FFFFFF",
+        "borderWidth": 1,
+        "nullColor": "#F3F4F6",
+        "states": {
+          "hover": {
+            "brightness": 0.1,
+            "borderColor": "#1F2937",
+            "borderWidth": 2
+          },
+          "select": {
+            "color": "#8B5CF6"
+          }
+        },
+        "dataLabels": {
+          "enabled": false
+        }
+      }],
+      "mapNavigation": {
+        "enabled": true,
+        "buttonOptions": {
+          "verticalAlign": "bottom"
+        },
+        "buttons": {
+          "zoomIn": {
+            "text": "+"
+          },
+          "zoomOut": {
+            "text": "-"
+          }
+        }
+      },
+      "tooltip": {
+        "pointFormat": "<div style=\"text-align: center;\"><b style=\"font-size: 14px;\">{point.name}</b><br/><span style=\"font-size: 16px; color: #635BFF; font-weight: 600;\">{point.value}</span></div>"
+      },
+      "legend": {
+        "enabled": true,
+        "layout": "vertical",
+        "align": "right",
+        "verticalAlign": "middle"
+      }
+    }
+  },
+  {
+    "id": "map-orthographic",
+    "title": "World Map - Orthographic Projection (Globe View)",
+    "type": "map",
+    "mapType": "custom/world",
+    "projection": "Orthographic",
+    "highchartsConfig": {
+      "chart": {
+        "type": "map",
+        "height": 400
+      },
+      "colorAxis": {
+        "min": 0,
+        "minColor": "#E0E7FF",
+        "maxColor": "#635BFF",
+        "stops": [
+          [0, "#E0E7FF"],
+          [0.5, "#A5B4FC"],
+          [1, "#635BFF"]
+        ]
+      },
+      "mapView": {
+        "projection": {
+          "name": "Orthographic"
+        }
+      },
+      "series": [{
+        "type": "map",
+        "name": "Sales",
+        "data": [
+          {"hc-key": "us", "value": 450, "name": "United States"},
+          {"hc-key": "ca", "value": 320, "name": "Canada"},
+          {"hc-key": "gb", "value": 410, "name": "United Kingdom"},
+          {"hc-key": "fr", "value": 350, "name": "France"},
+          {"hc-key": "de", "value": 390, "name": "Germany"},
+          {"hc-key": "au", "value": 340, "name": "Australia"},
+          {"hc-key": "jp", "value": 420, "name": "Japan"},
+          {"hc-key": "cn", "value": 550, "name": "China"}
+        ],
+        "joinBy": ["hc-key", "hc-key"],
+        "borderColor": "#FFFFFF",
+        "borderWidth": 1,
+        "nullColor": "#F3F4F6",
+        "states": {
+          "hover": {
+            "brightness": 0.1,
+            "borderColor": "#1F2937",
+            "borderWidth": 2
+          }
+        },
+        "dataLabels": {
+          "enabled": false
+        }
+      }],
+      "mapNavigation": {
+        "enabled": true,
+        "buttonOptions": {
+          "verticalAlign": "bottom"
+        },
+        "buttons": {
+          "zoomIn": {
+            "text": "+"
+          },
+          "zoomOut": {
+            "text": "-"
+          }
+        }
+      },
+      "tooltip": {
+        "pointFormat": "<div style=\"text-align: center;\"><b style=\"font-size: 14px;\">{point.name}</b><br/><span style=\"font-size: 16px; color: #635BFF; font-weight: 600;\">{point.value}</span></div>"
+      },
+      "legend": {
+        "enabled": true,
+        "layout": "vertical",
+        "align": "right",
+        "verticalAlign": "middle"
+      }
+    }
+  },
+  {
+    "id": "map-mercator",
+    "title": "World Map - Mercator Projection",
+    "type": "map",
+    "mapType": "custom/world",
+    "projection": "Mercator",
+    "highchartsConfig": {
+      "chart": {
+        "type": "map",
+        "height": 400
+      },
+      "colorAxis": {
+        "min": 0,
+        "minColor": "#E0E7FF",
+        "maxColor": "#635BFF",
+        "stops": [
+          [0, "#E0E7FF"],
+          [0.5, "#A5B4FC"],
+          [1, "#635BFF"]
+        ]
+      },
+      "mapView": {
+        "projection": {
+          "name": "Mercator"
+        }
+      },
+      "series": [{
+        "type": "map",
+        "name": "Sales",
+        "data": [
+          {"hc-key": "us", "value": 450, "name": "United States"},
+          {"hc-key": "ca", "value": 320, "name": "Canada"},
+          {"hc-key": "mx", "value": 280, "name": "Mexico"},
+          {"hc-key": "gb", "value": 410, "name": "United Kingdom"},
+          {"hc-key": "fr", "value": 350, "name": "France"},
+          {"hc-key": "de", "value": 390, "name": "Germany"},
+          {"hc-key": "it", "value": 310, "name": "Italy"},
+          {"hc-key": "es", "value": 290, "name": "Spain"},
+          {"hc-key": "au", "value": 340, "name": "Australia"},
+          {"hc-key": "jp", "value": 420, "name": "Japan"},
+          {"hc-key": "cn", "value": 550, "name": "China"},
+          {"hc-key": "in", "value": 480, "name": "India"},
+          {"hc-key": "br", "value": 380, "name": "Brazil"}
+        ],
+        "joinBy": ["hc-key", "hc-key"],
+        "borderColor": "#FFFFFF",
+        "borderWidth": 1,
+        "nullColor": "#F3F4F6",
+        "states": {
+          "hover": {
+            "brightness": 0.1,
+            "borderColor": "#1F2937",
+            "borderWidth": 2
+          }
+        },
+        "dataLabels": {
+          "enabled": false
+        }
+      }],
+      "mapNavigation": {
+        "enabled": true,
+        "buttonOptions": {
+          "verticalAlign": "bottom"
+        },
+        "buttons": {
+          "zoomIn": {
+            "text": "+"
+          },
+          "zoomOut": {
+            "text": "-"
+          }
+        }
+      },
+      "tooltip": {
+        "pointFormat": "<div style=\"text-align: center;\"><b style=\"font-size: 14px;\">{point.name}</b><br/><span style=\"font-size: 16px; color: #635BFF; font-weight: 600;\">{point.value}</span></div>"
+      },
+      "legend": {
+        "enabled": true,
+        "layout": "vertical",
+        "align": "right",
+        "verticalAlign": "middle"
+      }
+    }
+  },
+  {
+    "id": "map-naturalearth",
+    "title": "World Map - Natural Earth Projection",
+    "type": "map",
+    "mapType": "custom/world",
+    "projection": "NaturalEarth",
+    "highchartsConfig": {
+      "chart": {
+        "type": "map",
+        "height": 400
+      },
+      "colorAxis": {
+        "min": 0,
+        "minColor": "#E0E7FF",
+        "maxColor": "#635BFF",
+        "stops": [
+          [0, "#E0E7FF"],
+          [0.5, "#A5B4FC"],
+          [1, "#635BFF"]
+        ]
+      },
+      "mapView": {
+        "projection": {
+          "name": "NaturalEarth"
+        }
+      },
+      "series": [{
+        "type": "map",
+        "name": "Sales",
+        "data": [
+          {"hc-key": "us", "value": 450, "name": "United States"},
+          {"hc-key": "ca", "value": 320, "name": "Canada"},
+          {"hc-key": "gb", "value": 410, "name": "United Kingdom"},
+          {"hc-key": "fr", "value": 350, "name": "France"},
+          {"hc-key": "de", "value": 390, "name": "Germany"},
+          {"hc-key": "au", "value": 340, "name": "Australia"},
+          {"hc-key": "jp", "value": 420, "name": "Japan"},
+          {"hc-key": "cn", "value": 550, "name": "China"},
+          {"hc-key": "in", "value": 480, "name": "India"},
+          {"hc-key": "br", "value": 380, "name": "Brazil"}
+        ],
+        "joinBy": ["hc-key", "hc-key"],
+        "borderColor": "#FFFFFF",
+        "borderWidth": 1,
+        "nullColor": "#F3F4F6",
+        "states": {
+          "hover": {
+            "brightness": 0.1,
+            "borderColor": "#1F2937",
+            "borderWidth": 2
+          }
+        },
+        "dataLabels": {
+          "enabled": false
+        }
+      }],
+      "mapNavigation": {
+        "enabled": true,
+        "buttonOptions": {
+          "verticalAlign": "bottom"
+        },
+        "buttons": {
+          "zoomIn": {
+            "text": "+"
+          },
+          "zoomOut": {
+            "text": "-"
+          }
+        }
+      },
+      "tooltip": {
+        "pointFormat": "<div style=\"text-align: center;\"><b style=\"font-size: 14px;\">{point.name}</b><br/><span style=\"font-size: 16px; color: #635BFF; font-weight: 600;\">{point.value}</span></div>"
+      },
+      "legend": {
+        "enabled": true,
+        "layout": "vertical",
+        "align": "right",
+        "verticalAlign": "middle"
+      }
+    }
+  }
+]
+

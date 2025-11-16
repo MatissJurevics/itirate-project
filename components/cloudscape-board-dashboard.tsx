@@ -20,6 +20,7 @@ export interface Widget {
   categories?: string[]
   mapData?: any
   mapType?: string
+  projection?: string
   highchartsConfig?: any
 }
 
@@ -43,6 +44,7 @@ const MemoizedChartWrapper = React.memo(({ widget }: { widget: Widget }) => (
       categories={widget.categories}
       mapData={widget.mapData}
       mapType={widget.mapType}
+      projection={widget.projection}
     />
   </div>
 ), (prevProps, nextProps) => {
@@ -56,7 +58,8 @@ const MemoizedChartWrapper = React.memo(({ widget }: { widget: Widget }) => (
     prevProps.widget.title === nextProps.widget.title &&
     prevProps.widget.categories === nextProps.widget.categories &&
     prevProps.widget.mapData === nextProps.widget.mapData &&
-    prevProps.widget.mapType === nextProps.widget.mapType
+    prevProps.widget.mapType === nextProps.widget.mapType &&
+    prevProps.widget.projection === nextProps.widget.projection
   )
 })
 

@@ -17,6 +17,12 @@ export const createMapConfig = (
         [1, "#635BFF"],
       ],
     },
+    // Add mapView with projection support for built-in projections
+    mapView: props.projection ? {
+      projection: {
+        name: props.projection as any,
+      },
+    } : undefined,
     series: [
       {
         type: "map",
@@ -78,6 +84,12 @@ export const createMapBubbleConfig = (
   
   return {
     ...base,
+    // Add mapView with projection support for built-in projections
+    mapView: props.projection ? {
+      projection: {
+        name: props.projection as any,
+      },
+    } : undefined,
     series: [
       {
         type: "map",

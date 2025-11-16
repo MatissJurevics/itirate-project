@@ -17,6 +17,7 @@ interface DashboardChartProps {
   height?: number | string
   mapData?: any
   mapType?: string
+  projection?: string
   highchartsConfig?: Highcharts.Options
 }
 
@@ -28,6 +29,7 @@ export function DashboardChart({
   height = 350,
   mapData,
   mapType,
+  projection,
   highchartsConfig,
 }: DashboardChartProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
@@ -38,7 +40,7 @@ export function DashboardChart({
   const options: Highcharts.Options = React.useMemo(() => {
     // If highchartsConfig is provided, use it directly (with height override for responsiveness)
     if (highchartsConfig) {
-      return {
+      const config: Highcharts.Options = {
         ...highchartsConfig,
         chart: {
           ...highchartsConfig.chart,
@@ -49,6 +51,32 @@ export function DashboardChart({
           text: undefined, // Hide title - it's shown in the widget header
         },
       }
+
+      // Inject loaded map data into series if available and not already present
+      if (loadedMapData && config.series) {
+        config.series = config.series.map((series: any) => {
+          // Only inject mapData if series doesn't already have it
+          if ((series.type === "map" || series.type === "mapbubble") && !series.mapData) {
+            return {
+              ...series,
+              mapData: loadedMapData,
+            }
+          }
+          return series
+        })
+      }
+
+      // Inject projection if provided and not already in config
+      if (projection && !config.mapView?.projection) {
+        config.mapView = {
+          ...config.mapView,
+          projection: {
+            name: projection as any,
+          },
+        }
+      }
+
+      return config
     }
 
     // Otherwise, use the factory to build options
@@ -64,9 +92,10 @@ export function DashboardChart({
       height: chartHeight,
       mapData,
       mapType,
+      projection,
       loadedMapData,
     })
-  }, [highchartsConfig, type, data, title, categories, chartHeight, mapData, mapType, loadedMapData])
+  }, [highchartsConfig, type, data, title, categories, chartHeight, mapData, mapType, projection, loadedMapData])
 
   // Create and manage chart instance
   useHighchartsChart(containerRef, options, type, loadedMapData, highchartsConfig)

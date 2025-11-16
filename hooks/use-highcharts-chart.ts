@@ -62,14 +62,29 @@ export const useHighchartsChart = (
           },
         },
       }
-      // Set map data in chart config if not already set in series
-      if (loadedMapData && !mapOptions.series?.[0]?.mapData) {
+      
+      // Inject map data into series if not already present
+      if (loadedMapData && mapOptions.series) {
+        mapOptions.series = mapOptions.series.map((series: any) => {
+          if ((series.type === "map" || series.type === "mapbubble") && !series.mapData) {
+            return {
+              ...series,
+              mapData: loadedMapData,
+            }
+          }
+          return series
+        })
+      }
+      
+      // Also set map data in chart config as fallback
+      if (loadedMapData && !mapOptions.series?.some((s: any) => s.mapData)) {
         (mapOptions as any).chart = {
           ...(mapOptions.chart || {}),
           map: loadedMapData,
           animation: false,
         }
       }
+      
       chartInstanceRef.current = (Highcharts as any).mapChart(containerRef.current, mapOptions)
     } else {
       const chartOptions = {

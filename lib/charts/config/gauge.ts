@@ -5,7 +5,18 @@ export const createGaugeConfig = (
   base: Highcharts.Options,
   props: ChartConfigProps
 ): Highcharts.Options => {
-  const gaugeData = Array.isArray(props.data) ? props.data : [props.data]
+  // Normalize and filter out invalid data
+  let gaugeData: any[] = []
+  if (Array.isArray(props.data)) {
+    gaugeData = props.data.filter(item => item != null)
+  } else if (props.data != null) {
+    gaugeData = [props.data]
+  }
+  
+  // If no valid data, provide a default
+  if (gaugeData.length === 0) {
+    gaugeData = [{ name: "Value", y: 0 }]
+  }
   
   return {
     ...base,
@@ -50,19 +61,25 @@ export const createGaugeConfig = (
         },
       },
     },
-    series: gaugeData.map((item: any, index: number) => ({
-      type: "solidgauge",
-      name: item.name || `Series ${index + 1}`,
-      data: [item.y || item],
-      dataLabels: {
-        format: '<div style="text-align:center"><span style="font-size:25px;font-weight:600;color:#1F2937">{y}</span><br/><span style="font-size:12px;color:#6B7280">{name}</span></div>',
-        borderWidth: 0,
-        y: 20,
-      },
-      tooltip: {
-        valueSuffix: "%",
-      },
-    })),
+    series: gaugeData.map((item: any, index: number) => {
+      // Handle different data formats
+      const value = item?.y ?? item?.value ?? (typeof item === 'number' ? item : item ?? 0)
+      const name = item?.name || `Series ${index + 1}`
+      
+      return {
+        type: "solidgauge",
+        name: name,
+        data: [value],
+        dataLabels: {
+          format: '<div style="text-align:center"><span style="font-size:25px;font-weight:600;color:#1F2937">{y}</span><br/><span style="font-size:12px;color:#6B7280">{name}</span></div>',
+          borderWidth: 0,
+          y: 20,
+        },
+        tooltip: {
+          valueSuffix: "%",
+        },
+      }
+    }),
     tooltip: {
       ...base.tooltip,
       pointFormat: '<div style="text-align: center;"><b>{point.name}</b><br/><span style="font-size: 16px; color: #635BFF; font-weight: 600;">{point.y}</span></div>',
