@@ -47,7 +47,8 @@ export const savePreparedChart = tool({
               chart_type TEXT,
               user_prompt TEXT,
               created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+              dashboard_id UUID REFERENCES dashboards(id) ON DELETE CASCADE
             );
           `);
 
@@ -60,6 +61,19 @@ export const savePreparedChart = tool({
                 WHERE table_name = 'charts' AND column_name = 'csv_id' AND data_type = 'uuid'
               ) THEN
                 ALTER TABLE charts ALTER COLUMN csv_id TYPE TEXT;
+            END IF;
+          END $$;
+        `);
+
+          // Ensure dashboard_id column exists for linking charts to dashboards
+          await client.query(`
+            DO $$
+            BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'charts' AND column_name = 'dashboard_id'
+              ) THEN
+                ALTER TABLE charts ADD COLUMN dashboard_id UUID REFERENCES dashboards(id) ON DELETE CASCADE;
               END IF;
             END $$;
           `);

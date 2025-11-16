@@ -346,6 +346,32 @@ export class SQLExecutor {
   }
 
   /**
+   * Run a predefined sampling query to build a stratified sample for prompts.
+   * This does NOT affect query responses - it's only for system context.
+   */
+  static async getPromptSample(
+    tableName: string,
+    rowLimit: number = 1000
+  ): Promise<StratifiedSample | null> {
+    try {
+      const sanitizedTableName = this.sanitizeTableName(tableName);
+      const sampleQuery = `SELECT * FROM csv_to_table.${sanitizedTableName} LIMIT ${rowLimit}`;
+      const result = await this.execute(sampleQuery, sanitizedTableName, {
+        maxRows: rowLimit,
+      });
+
+      if (!result.success || !result.data || result.data.length === 0) {
+        return null;
+      }
+
+      return await DataSampler.sampleResults(result.data, Math.min(50, rowLimit));
+    } catch (error) {
+      console.error('Failed to generate prompt sample:', error);
+      return null;
+    }
+  }
+
+  /**
    * Clear cache for a specific CSV or all cache
    */
   static clearCache(csvId?: string): void {

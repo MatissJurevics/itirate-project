@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { FileText, ChevronDown, ChevronUp, AlertCircle, Plus, Sparkles } from "lucide-react"
+import { FileText, ChevronDown, ChevronUp, AlertCircle, Plus, Sparkles, Loader2 } from "lucide-react"
 import { DatasetBadge } from "@/components/dataset-badge"
 import { DatasetSelectorPopover } from "@/components/dataset-selector-popover"
 import { toast } from "sonner"
@@ -141,6 +141,21 @@ export function PageContent({ id }: PageContentProps) {
     setAvailableDatasets(fetchedDatasets)
   }
 
+  const convertStoredWidgets = React.useCallback((widgets: any[] = []) => {
+    return widgets.map((widget: any) => {
+      const isApiResponseFormat =
+        (widget.chartId !== undefined || widget.success !== undefined) ||
+        (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
+        (widget.dataPreview !== undefined && widget.chartType !== undefined)
+
+      if (isApiResponseFormat) {
+        return adaptChartData(widget as ChartApiResponse)
+      }
+
+      return widget
+    })
+  }, [])
+
   const ensureWidgetIds = React.useCallback((widgets: any[]): Widget[] => {
     return widgets.map((widget: any, index: number) => {
       const baseWidget = widget.id
@@ -248,46 +263,12 @@ export function PageContent({ id }: PageContentProps) {
           return
         }
 
-        // Fetch charts from the charts table for this dashboard
-        const { data: chartsData, error: chartsError } = await supabase
-          .from("charts")
-          .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
-          .eq("dashboard_id", id)
-          .order("created_at", { ascending: true })
-
-        if (chartsError) {
-          console.error("Failed to fetch charts:", chartsError)
-        }
-
-        // Convert charts from database to widget format
-        const chartsAsWidgets = (chartsData || []).map((chart: any) => ({
-          id: chart.id,
-          chartId: chart.id,
-          highchartsConfig: chart.chart_options,
-          chartType: chart.chart_type,
-          type: chart.chart_type,
-          sqlQuery: chart.sql_query,
-          userPrompt: chart.user_prompt,
-          createdAt: chart.created_at
-        }))
-
         // Combine dashboard widgets (legacy) with charts from charts table
-        const legacyWidgets = (data.widgets || []).map((widget: any) => {
-          const isApiResponseFormat =
-            (widget.chartId !== undefined || widget.success !== undefined) ||
-            (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
-            (widget.dataPreview !== undefined && widget.chartType !== undefined)
-
-          if (isApiResponseFormat) {
-            return adaptChartData(widget as ChartApiResponse)
-          }
-
-          return widget
-        })
+        const legacyWidgets = convertStoredWidgets(data.widgets || [])
 
         const normalizedData = {
           ...data,
-          widgets: ensureWidgetIds([...legacyWidgets, ...chartsAsWidgets]),
+          widgets: ensureWidgetIds(legacyWidgets),
         }
 
         setDashboard(normalizedData)
@@ -300,7 +281,7 @@ export function PageContent({ id }: PageContentProps) {
     }
 
     loadDashboard()
-  }, [id, ensureWidgetIds])
+  }, [id, ensureWidgetIds, convertStoredWidgets])
 
   const audioUrl = dashboard?.audio || null
   const transcript = dashboard?.transcript || null
@@ -309,36 +290,27 @@ export function PageContent({ id }: PageContentProps) {
   const reloadCharts = React.useCallback(async () => {
     try {
       const supabase = createClient()
-      const { data: chartsData, error: chartsError } = await supabase
-        .from("charts")
-        .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
-        .eq("dashboard_id", id)
-        .order("created_at", { ascending: true })
+      const { data, error } = await supabase
+        .from("dashboards")
+        .select("widgets")
+        .eq("id", id)
+        .single()
 
-      if (chartsError) {
-        console.error("Failed to reload charts:", chartsError)
+      if (error) {
+        console.error("Failed to reload widgets:", error)
         return
       }
 
-      const chartsAsWidgets = (chartsData || []).map((chart: any) => ({
-        id: chart.id,
-        chartId: chart.id,
-        highchartsConfig: chart.chart_options,
-        chartType: chart.chart_type,
-        type: chart.chart_type,
-        sqlQuery: chart.sql_query,
-        userPrompt: chart.user_prompt,
-        createdAt: chart.created_at
-      }))
+      const refreshedWidgets = ensureWidgetIds(convertStoredWidgets(data?.widgets || []))
 
       setDashboard((prev: any) => ({
         ...prev,
-        widgets: ensureWidgetIds(chartsAsWidgets)
+        widgets: refreshedWidgets
       }))
     } catch (error) {
-      console.error("Error reloading charts:", error)
+      console.error("Error reloading widgets:", error)
     }
-  }, [id, ensureWidgetIds])
+  }, [id, ensureWidgetIds, convertStoredWidgets])
 
   // Auto-process initial prompt on page load (without opening chat)
   const [hasProcessedInitialPrompt, setHasProcessedInitialPrompt] = React.useState(false)

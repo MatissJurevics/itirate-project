@@ -2,6 +2,8 @@ import { streamText, stepCountIs } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createSQLTools } from '@/lib/ai/sql-tools';
+import { SQLExecutor } from '@/lib/services/sql-executor';
+import { DataSampler } from '@/lib/services/data-sampler';
 // import { highchartsTools } from '@/lib/ai/highcharts-tools';
 // import { dataTools } from '@/lib/ai/data-tools';
 
@@ -65,6 +67,30 @@ export async function POST(req: Request) {
       ? (csvId.startsWith('csv_') ? csvId : `csv_${csvId}`)
       : '';
 
+    let tableProfileSection = '';
+    if (csvId && systemPromptTableName) {
+      try {
+        const promptSample = await SQLExecutor.getPromptSample(systemPromptTableName, 1000);
+        if (promptSample) {
+          const formattedSample = DataSampler.formatForLLM(promptSample);
+          tableProfileSection = `
+TABLE STRUCTURE PROFILE (Pre-query sampling)
+- Source query: SELECT * FROM csv_to_table.${systemPromptTableName} LIMIT 1000
+- Purpose: Provide column awareness before any user query runs
+
+${formattedSample}
+
+Usage notes:
+- This profile is ONLY for schema context. Always execute fresh SQL for answers.
+- Do not extrapolate final results from this profile—use it to understand columns, types, and typical values.
+- Sampling is applied here exclusively; normal query responses should NOT be sampled unless explicitly enabled.
+`;
+        }
+      } catch (error) {
+        console.error('Unable to build table profile sample:', error);
+      }
+    }
+
     const result = streamText({
       model: getModel(),
       messages,
@@ -117,6 +143,7 @@ Dataset Context:
 - Table Name: ${systemPromptTableName}
 - Fully Qualified: csv_to_table.${systemPromptTableName}
 - CSV ID: ${csvId}
+${tableProfileSection ? `\n${tableProfileSection}` : ''}
 
 CRITICAL INSTRUCTIONS:
 1. You MUST use the execute_sql tool to answer data questions - never just describe queries
@@ -134,14 +161,10 @@ CRITICAL INSTRUCTIONS:
 10. In order to ascertain the structure of the data, run a single SELECT * FROM {table} LIMIT 1
 
 IMPORTANT - Data Sampling:
-- For large result sets (>50 rows), you will receive a STRATIFIED SAMPLE instead of full data
-- The sample includes:
-  * Statistical summary (min, max, mean, median, percentiles) for each column
-  * 15-50 representative random rows
-  * Distribution information
-- Use the statistics to understand the full dataset
-- The sample rows help you see actual data patterns
-- This is intentional to save tokens - the statistics give you complete information
+- A one-time stratified sample (from SELECT * LIMIT 1000) has already been provided above to understand schema shape.
+- That pre-sample is for CONTEXT ONLY. You must still execute new SQL queries for every user request.
+- General query responses are NOT sampled unless explicitly stated in the tool response.
+- When a tool response indicates sampling, describe how it impacts interpretation.
 
 Available Tools:
 - execute_sql: Execute SELECT queries against the CSV data table (returns SQL diff showing what changed)
