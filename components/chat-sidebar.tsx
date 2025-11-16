@@ -28,6 +28,17 @@ interface ChatSidebarProps {
   onChartGenerated?: () => void
 }
 
+// Helper function to clean up AI message content
+function cleanMessageContent(content: string): string {
+  // Remove markdown code blocks and tool call artifacts
+  return content
+    .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '') // Remove tool call blocks
+    .replace(/\[Tool call:[\s\S]*?\]/g, '') // Remove tool call references
+    .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines
+    .trim()
+}
+
 export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboardId, onChartGenerated }: ChatSidebarProps) {
   const [mounted, setMounted] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([])
