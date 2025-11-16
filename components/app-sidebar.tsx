@@ -45,70 +45,8 @@ const initialData: SidebarData = {
 
 
 
-export function AppSidebar() {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [data, setData] = React.useState<SidebarData>(initialData);
-
-  // Load from localStorage on mount (client-side only)
-  React.useEffect(() => {
-    const loadFromLocalStorage = (): SidebarData => {
-      if (typeof window === 'undefined') {
-        return initialData;
-      }
-
-      const dashboardData = localStorage.getItem('dashboardid');
-      if (!dashboardData) {
-        return initialData;
-      }
-
-      const trimmedData = dashboardData.trim();
-      if (!trimmedData || trimmedData === 'undefined' || trimmedData === 'null') {
-        localStorage.removeItem('dashboardid');
-        return initialData;
-      }
-
-      const firstChar = trimmedData[0];
-      const lastChar = trimmedData[trimmedData.length - 1];
-      const isValidJsonStructure =
-        (firstChar === '[' && lastChar === ']') ||
-        (firstChar === '{' && lastChar === '}');
-
-      if (!isValidJsonStructure) {
-        localStorage.removeItem('dashboardid');
-        return initialData;
-      }
-
-      try {
-        const parsedData = JSON.parse(trimmedData);
-        if (Array.isArray(parsedData)) {
-          const newItems = parsedData
-            .filter(item => item && typeof item === 'object' && item.title && (item.uuid || item.id))
-            .map(item => ({
-              title: item.title,
-              url: `/app/${item.uuid || item.id}`,
-            }));
-
-          if (newItems.length > 0) {
-            return {
-              ...initialData,
-              navMain: initialData.navMain.map(navItem =>
-                navItem.title === "Dashboards"
-                  ? { ...navItem, items: newItems }
-                  : navItem
-              )
-            };
-          }
-        }
-      } catch (error) {
-        localStorage.removeItem('dashboardid');
-      }
-      return initialData;
-    };
-
-    const loadedData = loadFromLocalStorage();
-    if (loadedData !== initialData) {
-      setData(loadedData);
-    }
-  }, []);
 
   // Fetch all dashboards from Supabase and update sidebar
   React.useEffect(() => {
@@ -137,24 +75,14 @@ export function AppSidebar() {
               uuid: dashboard.id,
             }));
 
-          // Store in localStorage
-          try {
-            localStorage.setItem('dashboardid', JSON.stringify(sidebarItems));
-          } catch (storageError) {
-            console.warn("Failed to save to localStorage:", storageError);
-          }
-
-          // Use startTransition to defer the update
-          React.startTransition(() => {
-            setData(prevData => ({
-              ...prevData,
-              navMain: prevData.navMain.map(navItem =>
-                navItem.title === "Dashboards"
-                  ? { ...navItem, items: sidebarItems }
-                  : navItem
-              )
-            }));
-          });
+          setData(prevData => ({
+            ...prevData,
+            navMain: prevData.navMain.map(navItem =>
+              navItem.title === "Dashboards"
+                ? { ...navItem, items: sidebarItems }
+                : navItem
+            )
+          }));
         }
       } catch (error) {
         console.error("Error fetching dashboards:", error);

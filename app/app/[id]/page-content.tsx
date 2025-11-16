@@ -66,9 +66,9 @@ export function PageContent({ id }: PageContentProps) {
       const baseWidget = widget.id
         ? (widget as Widget)
         : ({
-            ...widget,
-            id: widget.chartId || nanoid(),
-          } as Widget)
+          ...widget,
+          id: widget.chartId || nanoid(),
+        } as Widget)
 
       // Add default position/size if missing
       return {
@@ -88,13 +88,6 @@ export function PageContent({ id }: PageContentProps) {
       }
 
       setDashboard(updatedDashboard)
-
-      const storageKey = `dashboard_${id}`
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(updatedDashboard))
-      } catch (storageError) {
-        console.warn("Failed to save dashboard to localStorage:", storageError)
-      }
 
       try {
         const supabase = createClient()
@@ -119,46 +112,8 @@ export function PageContent({ id }: PageContentProps) {
 
   React.useEffect(() => {
     const loadDashboard = async () => {
-      const storageKey = `dashboard_${id}`
-      const cachedData = localStorage.getItem(storageKey)
-
-      if (cachedData) {
-        try {
-          const parsedData = JSON.parse(cachedData)
-          if (parsedData && parsedData.id === id) {
-            const normalizedData = {
-              ...parsedData,
-              widgets: ensureWidgetIds(
-                (parsedData.widgets || []).map((widget: any) => {
-                  const isApiResponseFormat =
-                    (widget.chartId !== undefined || widget.success !== undefined) ||
-                    (widget.chartType !== undefined && widget.widgetConfig !== undefined) ||
-                    (widget.dataPreview !== undefined && widget.chartType !== undefined)
-
-                  if (isApiResponseFormat) {
-                    return adaptChartData(widget as ChartApiResponse)
-                  }
-                  return widget
-                })
-              ),
-            }
-            setDashboard(normalizedData)
-            setLoading(false)
-
-            fetchAndUpdateDashboard(storageKey)
-            return
-          }
-        } catch (error) {
-          console.warn("Failed to parse cached dashboard data:", error)
-          localStorage.removeItem(storageKey)
-        }
-      }
-
       setLoading(true)
-      await fetchAndUpdateDashboard(storageKey)
-    }
 
-    const fetchAndUpdateDashboard = async (storageKey: string) => {
       try {
         const supabase = createClient()
 
@@ -193,12 +148,6 @@ export function PageContent({ id }: PageContentProps) {
           ),
         }
 
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(normalizedData))
-        } catch (storageError) {
-          console.warn("Failed to save dashboard to localStorage:", storageError)
-        }
-
         setDashboard(normalizedData)
       } catch (error) {
         console.error("Error fetching dashboard:", error)
@@ -209,7 +158,7 @@ export function PageContent({ id }: PageContentProps) {
     }
 
     loadDashboard()
-  }, [id])
+  }, [id, ensureWidgetIds])
 
   const audioUrl = dashboard?.audio || null
   const transcript = dashboard?.transcript || null
@@ -228,7 +177,7 @@ export function PageContent({ id }: PageContentProps) {
             </Button>
           }
         />
-        
+
         {/* Optional: Dataset info header only when URL provides info */}
         {(fileName || rowCount || initialPrompt) && (
           <div className="px-4 pt-4">
@@ -270,27 +219,54 @@ export function PageContent({ id }: PageContentProps) {
             <div className="h-px bg-border mt-2 mb-4" />
           </div>
         ) : dashboard?.title ? (
-          <PageTitle>{dashboard.title}</PageTitle>
+          <PageTitle
+            editable={true}
+            onEdit={async (newTitle: string) => {
+              try {
+                const supabase = createClient()
+                const { error } = await supabase
+                  .from("dashboards")
+                  .update({ title: newTitle })
+                  .eq("id", id)
+
+                if (error) {
+                  console.error("Failed to update title:", error)
+                  throw error
+                }
+
+                // Update local state
+                setDashboard((prev: any) => ({
+                  ...prev,
+                  title: newTitle,
+                }))
+              } catch (error) {
+                console.error("Error updating title:", error)
+                throw error
+              }
+            }}
+          >
+            {dashboard.title}
+          </PageTitle>
         ) : null}
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
-        {loading ? (
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video animate-pulse rounded" />
-            <div className="bg-muted/50 aspect-video animate-pulse rounded" />
-            <div className="bg-muted/50 aspect-video animate-pulse rounded" />
-          </div>
-        ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
-          <CloudscapeBoardDashboard
-            widgets={dashboard.widgets}
-            onItemsChange={handleItemsChange}
-          />
-        ) : (
-          <div className="col-span-3 flex items-center justify-center text-muted-foreground">
-            No widgets to display.
-          </div>
-        )}
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
+          {loading ? (
+            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+              <div className="bg-muted/50 aspect-video animate-pulse rounded" />
+            </div>
+          ) : dashboard && dashboard.widgets && dashboard.widgets.length > 0 ? (
+            <CloudscapeBoardDashboard
+              widgets={dashboard.widgets}
+              onItemsChange={handleItemsChange}
+            />
+          ) : (
+            <div className="col-span-3 flex items-center justify-center text-muted-foreground">
+              No widgets to display.
+            </div>
+          )}
+        </div>
       </div>
-    </div>
       {/* Re-open Audio Bar Button - Shows when collapsed */}
       {isAudioBarCollapsed && (
         <div className={`fixed bottom-0 z-40 transition-all duration-300 ease-in-out ${isChatOpen ? 'right-[24rem]' : 'right-4'}`}>
@@ -320,35 +296,35 @@ export function PageContent({ id }: PageContentProps) {
               <span className="text-sm text-muted-foreground">No audio available</span>
             </div>
           )}
-              {transcript && (
-                <Dialog open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8">
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh]">
-                    <DialogHeader>
-                      <DialogTitle>Transcript</DialogTitle>
-                    </DialogHeader>
-                    <ScrollArea className="max-h-[60vh] pr-4">
-                      <div className="whitespace-pre-wrap text-sm">
-                        {transcript}
-                      </div>
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsAudioBarCollapsed(!isAudioBarCollapsed)}
-                className="h-8 w-8"
-              >
-                <ChevronDown className="h-4 w-4" />
-                <span className="sr-only">Collapse audio player</span>
-              </Button>
-            </div>
+          {transcript && (
+            <Dialog open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8">
+                  <FileText className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Transcript</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] pr-4">
+                  <div className="whitespace-pre-wrap text-sm">
+                    {transcript}
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsAudioBarCollapsed(!isAudioBarCollapsed)}
+            className="h-8 w-8"
+          >
+            <ChevronDown className="h-4 w-4" />
+            <span className="sr-only">Collapse audio player</span>
+          </Button>
+        </div>
       </div>
       <ChatSidebar
         open={isChatOpen}
