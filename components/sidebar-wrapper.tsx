@@ -31,7 +31,7 @@ export function SidebarWrapper({ children }: SidebarWrapperProps) {
         } as React.CSSProperties
       }
     >
-      <AppSidebar key="app-sidebar" />
+      <AppSidebar />
       <SidebarInset>
         {children}
       </SidebarInset>

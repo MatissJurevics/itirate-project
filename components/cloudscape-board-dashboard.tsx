@@ -23,6 +23,43 @@ export interface Widget {
   highchartsConfig?: any
 }
 
+// Memoized chart component to prevent re-renders during drag/resize
+const MemoizedChartWrapper = React.memo(({ widget }: { widget: Widget }) => (
+  <div
+    style={{
+      width: "100%",
+      height: "100%",
+      minHeight: "200px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <DashboardChart
+      highchartsConfig={widget.highchartsConfig}
+      type={widget.type || widget.widgetType}
+      data={widget.data}
+      title={widget.title}
+      categories={widget.categories}
+      mapData={widget.mapData}
+      mapType={widget.mapType}
+    />
+  </div>
+), (prevProps, nextProps) => {
+  // Custom comparison: only re-render if widget data actually changed
+  return (
+    prevProps.widget.id === nextProps.widget.id &&
+    prevProps.widget.highchartsConfig === nextProps.widget.highchartsConfig &&
+    prevProps.widget.type === nextProps.widget.type &&
+    prevProps.widget.widgetType === nextProps.widget.widgetType &&
+    prevProps.widget.data === nextProps.widget.data &&
+    prevProps.widget.title === nextProps.widget.title &&
+    prevProps.widget.categories === nextProps.widget.categories &&
+    prevProps.widget.mapData === nextProps.widget.mapData &&
+    prevProps.widget.mapType === nextProps.widget.mapType
+  )
+})
+
 interface CloudscapeBoardDashboardProps {
   widgets: Widget[]
   onItemsChange: (items: Widget[]) => void
@@ -41,7 +78,7 @@ export function CloudscapeBoardDashboard({
     (event: CustomEvent<BoardProps.ItemsChangeDetail<Widget>>) => {
       // Extract detail from CustomEvent
       const detail = event.detail
-      
+
       // Safety check: ensure detail and items exist
       if (!detail || !detail.items || !Array.isArray(detail.items)) {
         console.warn("Invalid items change detail:", detail)
@@ -55,7 +92,7 @@ export function CloudscapeBoardDashboard({
           console.warn(`Widget not found for id: ${item.id}`)
           return null
         }
-        
+
         // Preserve all original widget properties and update layout properties
         return {
           ...originalWidget,
@@ -108,26 +145,7 @@ export function CloudscapeBoardDashboard({
               "Use arrow keys to resize the item, Space to complete resize, Escape to cancel resize.",
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              minHeight: "200px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <DashboardChart
-              highchartsConfig={widget.highchartsConfig}
-              type={widget.type || widget.widgetType}
-              data={widget.data}
-              title={widget.title}
-              categories={widget.categories}
-              mapData={widget.mapData}
-              mapType={widget.mapType}
-            />
-          </div>
+          <MemoizedChartWrapper widget={widget} />
         </BoardItem>
       )
     },
@@ -159,6 +177,13 @@ export function CloudscapeBoardDashboard({
 
   return (
     <div style={{ width: "100%", height: "100%", minHeight: "600px" }}>
+      <style jsx global>{`
+        /* Disable animations during drag/resize for performance */
+        .awsui-board-item * {
+          transition: none !important;
+          animation: none !important;
+        }
+      `}</style>
       <Board
         items={boardItems}
         renderItem={renderItem}

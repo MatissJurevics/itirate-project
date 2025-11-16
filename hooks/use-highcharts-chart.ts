@@ -35,23 +35,49 @@ export const useHighchartsChart = (
       // For map charts, ensure map data is in options
       const mapOptions = {
         ...options,
+        chart: {
+          ...(options.chart || {}),
+          animation: false,
+        },
+        plotOptions: {
+          ...(options.plotOptions || {}),
+          series: {
+            ...((options.plotOptions as any)?.series || {}),
+            animation: false,
+          },
+        },
       }
       // Set map data in chart config if not already set in series
       if (loadedMapData && !mapOptions.series?.[0]?.mapData) {
         (mapOptions as any).chart = {
           ...(mapOptions.chart || {}),
           map: loadedMapData,
+          animation: false,
         }
       }
       chartInstanceRef.current = (Highcharts as any).mapChart(containerRef.current, mapOptions)
     } else {
-      chartInstanceRef.current = Highcharts.chart(containerRef.current, options)
+      const chartOptions = {
+        ...options,
+        chart: {
+          ...(options.chart || {}),
+          animation: false,
+        },
+        plotOptions: {
+          ...(options.plotOptions || {}),
+          series: {
+            ...((options.plotOptions as any)?.series || {}),
+            animation: false,
+          },
+        },
+      }
+      chartInstanceRef.current = Highcharts.chart(containerRef.current, chartOptions)
     }
 
     // Handle resize
     const handleResize = () => {
       if (chartInstanceRef.current) {
-        chartInstanceRef.current.reflow()
+        chartInstanceRef.current.reflow(false) // Pass false to disable animation during reflow
       }
     }
 

@@ -13,9 +13,7 @@ export const createBaseConfig = (
       width: null, // Auto-resize to container width
       backgroundColor: "transparent",
       spacing: [20, 20, 20, 20],
-      animation: {
-        duration: 750,
-      },
+      animation: false,
       style: {
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
       },
@@ -71,9 +69,7 @@ export const createBaseConfig = (
     },
     plotOptions: {
       series: {
-        animation: {
-          duration: 750,
-        },
+        animation: false,
       },
     },
     responsive: {

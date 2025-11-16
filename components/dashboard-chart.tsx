@@ -20,7 +20,7 @@ interface DashboardChartProps {
   highchartsConfig?: Highcharts.Options
 }
 
-function DashboardChartComponent({
+export function DashboardChart({
   type,
   data,
   title,
@@ -40,10 +40,10 @@ function DashboardChartComponent({
     if (highchartsConfig) {
       return {
         ...highchartsConfig,
-      chart: {
+        chart: {
           ...highchartsConfig.chart,
-        height: chartHeight,
-        width: null, // Auto-resize to container width
+          height: chartHeight,
+          width: null, // Auto-resize to container width
         },
       }
     }
@@ -72,18 +72,3 @@ function DashboardChartComponent({
     <div ref={containerRef} className="w-full h-full min-w-0 overflow-hidden" />
   )
 }
-
-// Memoize component to prevent unnecessary re-renders
-export const DashboardChart = React.memo(DashboardChartComponent, (prevProps, nextProps) => {
-  // Custom comparison function for optimal re-render control
-  return (
-    prevProps.highchartsConfig === nextProps.highchartsConfig &&
-    prevProps.type === nextProps.type &&
-    prevProps.data === nextProps.data &&
-    prevProps.title === nextProps.title &&
-    JSON.stringify(prevProps.categories) === JSON.stringify(nextProps.categories) &&
-    prevProps.mapData === nextProps.mapData &&
-    prevProps.mapType === nextProps.mapType &&
-    prevProps.height === nextProps.height
-  )
-})

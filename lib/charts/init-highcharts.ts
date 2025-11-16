@@ -4,6 +4,20 @@ import Highcharts from "highcharts"
 let modulesInitialized = false
 let moduleInitPromise: Promise<void> | null = null
 
+// Set global default options to disable animations
+if (typeof window !== "undefined" && Highcharts) {
+  Highcharts.setOptions({
+    chart: {
+      animation: false
+    },
+    plotOptions: {
+      series: {
+        animation: false
+      }
+    }
+  })
+}
+
 /**
  * Initialize Highcharts modules. Returns a promise that resolves when all modules are loaded.
  * This ensures modules are available before charts are created.
