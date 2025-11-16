@@ -46,12 +46,6 @@ interface Widget {
 export function PageContent({ id }: PageContentProps) {
   const searchParams = useSearchParams()
 
-  // URL params are used as fallback during initial load
-  const urlPrompt = searchParams.get("prompt") || ""
-  const urlFileName = searchParams.get("fileName") || ""
-  const urlRowCount = searchParams.get("rows") || ""
-  const urlTableName = searchParams.get("table") || ""
-
   const [isChatOpen, setIsChatOpen] = React.useState(false)
   const [isTranscriptOpen, setIsTranscriptOpen] = React.useState(false)
   const [dashboard, setDashboard] = React.useState<any>(null)
@@ -60,6 +54,12 @@ export function PageContent({ id }: PageContentProps) {
   const [isAudioBarCollapsed, setIsAudioBarCollapsed] = React.useState(true)
   const { state: sidebarState } = useSidebar()
   const audioRef = React.useRef<HTMLAudioElement>(null)
+
+  // Derive values from dashboard (database)
+  const csvTableName = dashboard?.csv_table_name || ""
+  const fileName = dashboard?.file_name || ""
+  const rowCount = dashboard?.row_count?.toString() || ""
+  const initialPrompt = dashboard?.initial_prompt || ""
 
   const ensureWidgetIds = React.useCallback((widgets: any[]): Widget[] => {
     return widgets.map((widget: any, index: number) => {
