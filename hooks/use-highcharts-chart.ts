@@ -1,6 +1,7 @@
 import * as React from "react"
 import Highcharts from "highcharts"
 import type { ChartType } from "@/lib/charts/types"
+import { initializeHighchartsModules } from "@/lib/charts/init-highcharts"
 
 export const useHighchartsChart = (
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -10,9 +11,23 @@ export const useHighchartsChart = (
   highchartsConfig?: Highcharts.Options
 ) => {
   const chartInstanceRef = React.useRef<Highcharts.Chart | null>(null)
+  const [modulesReady, setModulesReady] = React.useState(false)
+
+  // Ensure modules are loaded before creating chart
+  React.useEffect(() => {
+    initializeHighchartsModules()
+      .then(() => {
+        setModulesReady(true)
+      })
+      .catch((error) => {
+        console.error("Failed to initialize Highcharts modules:", error)
+        // Still set ready to avoid blocking, but log the error
+        setModulesReady(true)
+      })
+  }, [])
 
   React.useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || !modulesReady) return
 
     // Determine chart type from highchartsConfig or type prop
     const chartType = highchartsConfig?.chart?.type || 
@@ -90,7 +105,7 @@ export const useHighchartsChart = (
         chartInstanceRef.current = null
       }
     }
-  }, [containerRef, options, type, loadedMapData, highchartsConfig])
+  }, [containerRef, options, type, loadedMapData, highchartsConfig, modulesReady])
 
   return chartInstanceRef
 }
