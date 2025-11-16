@@ -13,12 +13,14 @@ interface SidebarWrapperProps {
 export function SidebarWrapper({ children }: SidebarWrapperProps) {
   const pathname = usePathname()
   const isRootPage = pathname === '/'
-  // Initialize using the current path to avoid the sidebar flashing open on /
-  const [open, setOpen] = useState(() => !isRootPage)
+  const isAppDashboard = pathname.startsWith('/app')
+  const shouldStartOpen = !isRootPage && !isAppDashboard
+  // Initialize using the current path to avoid the sidebar flashing open
+  const [open, setOpen] = useState(() => shouldStartOpen)
   
   useEffect(() => {
-    setOpen(!isRootPage)
-  }, [isRootPage])
+    setOpen(shouldStartOpen)
+  }, [shouldStartOpen])
   
   return (
     <SidebarProvider
