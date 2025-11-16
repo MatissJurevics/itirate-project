@@ -24,9 +24,10 @@ interface ChatSidebarProps {
   onOpenChange: (open: boolean) => void
   csvId?: string
   initialPrompt?: string
+  dashboardId?: string
 }
 
-export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt }: ChatSidebarProps) {
+export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboardId }: ChatSidebarProps) {
   const [mounted, setMounted] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([])
   const [inputValue, setInputValue] = React.useState("")

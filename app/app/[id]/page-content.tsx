@@ -319,6 +319,7 @@ export function PageContent({ id }: PageContentProps) {
         onOpenChange={setIsChatOpen}
         csvId={csvId}
         initialPrompt={initialPrompt}
+        dashboardId={id}
       />
     </div>
   )
