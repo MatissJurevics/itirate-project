@@ -4,7 +4,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { SQLExecutor } from '../services/sql-executor';
 import { SQLDiffTracker } from '../services/sql-diff';
 import { highchartsTools } from './highcharts-tools';
-import { savePreparedChart } from '../chart-persistence-tool';
+import { saveDashboardWidget } from '../dashboard-widget-tool';
 
 // Tool execution context type
 export interface SQLToolContext {
@@ -197,7 +197,7 @@ Available chart types:
 - generateScatterChart: For correlations between two variables
 - generateAreaChart: For cumulative/volume trends
 
-After creating the chart configuration, you MUST call savePreparedChart to save it.
+After creating the chart configuration, you MUST call saveDashboardWidget to save it.
 
 IMPORTANT:
 - Analyze the data columns to determine which should be on x-axis vs y-axis
@@ -233,9 +233,13 @@ ${JSON.stringify(dataSample, null, 2)}
 Please analyze this data and create an appropriate chart visualization.
 1. Choose the best chart type for this data
 2. Generate the complete Highcharts configuration
-3. Save the chart using savePreparedChart with:
-   - csvId: "${context.csvId}"
-   ${context.dashboardId ? `- dashboardId: "${context.dashboardId}"` : ''}
+3. Save the chart using saveDashboardWidget with:
+   - dashboardId: "${context.dashboardId}"
+   - sqlQuery: "${sqlQuery}"
+   - chartOptions: (the chart configuration from step 2)
+   - chartType: (the chart type you chose)
+   - userPrompt: "${userIntent}"
+   - title: (a descriptive title for the chart)
 `;
 
       try {
@@ -251,7 +255,7 @@ Please analyze this data and create an appropriate chart visualization.
             generatePieChart: highchartsTools.generatePieChart,
             generateScatterChart: highchartsTools.generateScatterChart,
             generateAreaChart: highchartsTools.generateAreaChart,
-            savePreparedChart: savePreparedChart,
+            saveDashboardWidget: saveDashboardWidget,
           },
           stopWhen: stepCountIs(3),
         });
@@ -282,11 +286,11 @@ Please analyze this data and create an appropriate chart visualization.
                   else if (toolResult.toolName.includes('Area')) chartType = 'area';
                 }
                 // Extract save result
-                if (toolResult.toolName === 'savePreparedChart' && toolResultAny.output) {
+                if (toolResult.toolName === 'saveDashboardWidget' && toolResultAny.output) {
                   const saveResult = toolResultAny.output as any;
                   if (saveResult.success) {
                     saveSuccess = true;
-                    chartId = saveResult.chartId;
+                    chartId = saveResult.widgetId;
                   }
                 }
               }
