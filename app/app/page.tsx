@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Paperclip } from "lucide-react"
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
-import { DashboardChart } from "@/components/dashboard-chart"
+import { DashboardCard } from "@/components/dashboard-card"
 import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
 
 interface Dashboard {
@@ -141,40 +140,15 @@ export default function Page() {
               </form>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {dashboards.map((dashboard) => (
-                <Link key={dashboard.id} href={`/app/${dashboard.id}`}>
-                  <div className="group cursor-pointer border bg-card hover:shadow-lg transition-all duration-200 overflow-hidden h-64">
-                    <div className="relative w-full h-full bg-background/50 flex items-center justify-center">
-                      {dashboard.widgets && dashboard.widgets.length > 0 ? (
-                        <div className="w-full h-full scale-75 origin-top-left pointer-events-none">
-                          <DashboardChart
-                            highchartsConfig={dashboard.widgets[0].highchartsConfig}
-                            type={dashboard.widgets[0].type || dashboard.widgets[0].widgetType}
-                            data={dashboard.widgets[0].data}
-                            title={dashboard.widgets[0].title}
-                            categories={dashboard.widgets[0].categories}
-                            mapData={dashboard.widgets[0].mapData}
-                            mapType={dashboard.widgets[0].mapType}
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="text-4xl text-muted-foreground">📊</div>
-                          <span className="text-sm text-muted-foreground">No widgets</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                    </div>
-                    <div className="p-3 bg-card border-t">
-                      <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                        {dashboard.title.replace(/\w\S*/g, (txt: string) =>
-                          txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
-                        )}
-                      </h3>
-                    </div>
-                  </div>
-                </Link>
+                <DashboardCard
+                  key={dashboard.id}
+                  id={dashboard.id}
+                  title={dashboard.title}
+                  widgets={dashboard.widgets}
+                  created_at={dashboard.created_at}
+                />
               ))}
             </div>
           )}
