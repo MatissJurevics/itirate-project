@@ -14,22 +14,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const SYSTEM_PROMPT = `You are a data visualization expert. You must ALWAYS perform both steps:
+    const SYSTEM_PROMPT = `You are a data visualization expert. Generate a chart configuration using the appropriate chart tool.
 
-STEP 1: Generate the chart configuration
-STEP 2: Save it to the dashboard  
+For this category data, call generateColumnChart to create a column chart that compares the categories by count.
 
-For this category data, you MUST:
-1. Call generateColumnChart to create the chart
-2. IMMEDIATELY after, call saveDashboardWidget to save it
+Available chart types:
+- generateLineChart: For time series
+- generateColumnChart: For category comparisons (USE THIS)
+- generateBarChart: For horizontal categories  
+- generatePieChart: For proportions
+- generateScatterChart: For correlations
 
-You cannot complete the task without calling BOTH tools. The user needs the chart saved to their dashboard.
-
-Available tools:
-- generateColumnChart: Perfect for this category data
-- saveDashboardWidget: Required to save the chart
-
-CRITICAL: After generating the chart, you MUST call saveDashboardWidget or the user's request will be incomplete!`;
+Call generateColumnChart now!`;
 
     // Limit data sample for LLM to avoid token limits
     const dataSample = sqlResults.slice(0, 10);
@@ -53,28 +49,16 @@ ${JSON.stringify(dataSample, null, 2)}
 - Total rows: ${totalRows}
 - Columns: ${dataSample.length > 0 ? Object.keys(dataSample[0]).join(', ') : 'No data'}
 
-REQUIRED ACTION: Execute these 2 tool calls in sequence:
-
-1. generateColumnChart with the data above
-2. saveDashboardWidget with:
-   - dashboardId: "${dashboardId}"
-   - sqlQuery: "${sqlQuery}"
-   - chartOptions: (the result from step 1)
-   - chartType: "column"  
-   - userPrompt: "${userPrompt}"
-   - title: "${title || 'Chart'}"
-
-You MUST call both tools to complete this request!
+Call generateColumnChart with the category data above to create a column chart!
 `;
 
-    // Use only essential chart tools to avoid overwhelming the AI
+    // Use only chart generation tools - we'll handle dashboard saving manually
     const essentialTools = {
       generateLineChart: highchartsTools.generateLineChart,
       generateColumnChart: highchartsTools.generateColumnChart,
       generateBarChart: highchartsTools.generateBarChart,
       generatePieChart: highchartsTools.generatePieChart,
-      generateScatterChart: highchartsTools.generateScatterChart,
-      saveDashboardWidget: saveDashboardWidget
+      generateScatterChart: highchartsTools.generateScatterChart
     };
     
     console.log('🔧 Available tools:', Object.keys(essentialTools));
@@ -136,20 +120,37 @@ You MUST call both tools to complete this request!
       );
     }
 
-    // Dashboard saving is now handled by the AI using the saveDashboardWidget tool
+    // Always save to dashboard after successful chart generation
+    if (chartConfig) {
+      try {
+        console.log('🔄 Manually saving widget to dashboard...');
+        console.log('📊 Chart Type:', chartType);
+        console.log('🏷️  Dashboard ID:', dashboardId);
 
-    return Response.json({
-      success: true,
-      widgetId: widgetId || `widget-${Date.now()}`,
-      dashboardId,
-      chartConfig,
-      chartType,
-      dataPreview: dataSample,
-      totalRows,
-      saved: saveSuccess,
-      saveError: saveSuccess ? null : 'Dashboard save failed',
-      aiResponse: result.text
-    });
+        const saveResult = await saveDashboardWidget.execute({
+          dashboardId,
+          sqlQuery,
+          chartOptions: chartConfig,
+          chartType,
+          userPrompt: userPrompt || 'Generate chart',
+          title: title || `${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart`
+        }, { toolCallId: 'manual-save', messages: [], abortSignal: undefined });
+        
+        console.log('💾 Manual save result:', JSON.stringify(saveResult, null, 2));
+        
+        if (saveResult && typeof saveResult === 'object' && 'success' in saveResult) {
+          saveSuccess = saveResult.success as boolean;
+          if (saveResult.success && 'widgetId' in saveResult) {
+            widgetId = saveResult.widgetId as string;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to manually save widget:', error);
+      }
+    }
+
+    // Return just the Highcharts configuration
+    return Response.json(chartConfig);
 
   } catch (error) {
     console.error('Chart generation error:', error);
