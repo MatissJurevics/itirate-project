@@ -88,14 +88,14 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
   return (
     <div
       className={cn(
-        "flex flex-col bg-background border-l shadow-lg transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+        "flex flex-col bg-background border-l transition-all duration-300 ease-in-out overflow-hidden shrink-0",
         open ? "w-[24rem] opacity-100" : "w-0 opacity-0 border-0"
       )}
       style={{
         height: "100%",
       }}
     >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b px-4">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b px-4">
         <h2 className="text-lg font-semibold">Chat Assistant</h2>
         <Button
           variant="ghost"
@@ -118,7 +118,7 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
             )}
           >
             {message.role === "assistant" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-muted text-xs font-medium">
                 AI
               </div>
             )}
@@ -126,10 +126,10 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    "group relative max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm",
+                    "group relative max-w-[75%] px-4 py-2.5",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                   )}
                 >
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -150,7 +150,7 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
               </TooltipContent>
             </Tooltip>
             {message.role === "user" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary text-primary-foreground text-xs font-medium">
                 You
               </div>
             )}

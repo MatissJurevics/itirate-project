@@ -27,7 +27,7 @@ function DashboardContent() {
         {prompt && (
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">User Prompt:</h2>
-            <p className="text-lg text-muted-foreground bg-card p-4 rounded-lg border border-border">
+            <p className="text-lg text-muted-foreground bg-card p-4 border border-border">
               {prompt}
             </p>
           </div>
@@ -36,7 +36,7 @@ function DashboardContent() {
         {fileName && (
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">Uploaded File:</h2>
-            <p className="text-lg text-muted-foreground bg-card p-4 rounded-lg border border-border">
+            <p className="text-lg text-muted-foreground bg-card p-4 border border-border">
               {fileName}
             </p>
           </div>
@@ -45,7 +45,7 @@ function DashboardContent() {
         {tableName && (
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">Database Table:</h2>
-            <p className="text-lg text-muted-foreground bg-card p-4 rounded-lg border border-border">
+            <p className="text-lg text-muted-foreground bg-card p-4 border border-border">
               <span className="font-mono">csv_to_table.{tableName}</span>
               {rowCount > 0 && (
                 <span className="ml-2 text-sm">({rowCount.toLocaleString()} rows)</span>

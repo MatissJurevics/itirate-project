@@ -34,11 +34,11 @@ interface SidebarData {
 const initialData: SidebarData = {
   navMain: [
     {
-      title: "Create Page",
+      title: "Dashboards",
       url: "/app",
       items: [],
     },
-   
+
   ]
 }
 
@@ -46,13 +46,13 @@ const initialData: SidebarData = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [data, setData] = React.useState<SidebarData>(initialData);
-  
+
   // Fetch all dashboards from Supabase and update sidebar
   React.useEffect(() => {
     const fetchDashboards = async () => {
       try {
         const supabase = createClient();
-        
+
         // Fetch all dashboards from the dashboards table
         const { data: dashboards, error } = await supabase
           .from("dashboards")
@@ -86,8 +86,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           // Update sidebar data
           setData(prevData => ({
             ...prevData,
-            navMain: prevData.navMain.map(navItem => 
-              navItem.title === "Create Page" 
+            navMain: prevData.navMain.map(navItem =>
+              navItem.title === "Dashboards"
                 ? { ...navItem, items: sidebarItems }
                 : navItem
             )
@@ -119,10 +119,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       // Basic JSON structure validation before parsing
       const firstChar = trimmedData[0];
       const lastChar = trimmedData[trimmedData.length - 1];
-      const isValidJsonStructure = 
-        (firstChar === '[' && lastChar === ']') || 
+      const isValidJsonStructure =
+        (firstChar === '[' && lastChar === ']') ||
         (firstChar === '{' && lastChar === '}');
-      
+
       if (!isValidJsonStructure) {
         console.warn('Invalid JSON structure in localStorage, clearing data');
         localStorage.removeItem('dashboardid');
@@ -138,12 +138,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               title: item.title,
               url: `/app/${item.uuid || item.id}`,
             }));
-          
+
           if (newItems.length > 0) {
             setData(prevData => ({
               ...prevData,
-              navMain: prevData.navMain.map(navItem => 
-                navItem.title === "Create Page" 
+              navMain: prevData.navMain.map(navItem =>
+                navItem.title === "Create Page"
                   ? { ...navItem, items: newItems }
                   : navItem
               )
@@ -160,13 +160,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, []);
 
   return (
-    <Sidebar variant="floating" {...props}>
+    <Sidebar variant="sidebar" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">

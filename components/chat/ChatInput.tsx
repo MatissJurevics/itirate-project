@@ -97,7 +97,7 @@ export default function ChatInput({ onSendMessage, disabled, onFileUpload }: Cha
         onChange={handleFileUpload}
         disabled={disabled || isUploading}
       />
-      <div className="flex items-center gap-2 rounded-3xl border border-gray-300 bg-white p-3 shadow-medium transition-all duration-300 focus-within:border-gray-900 focus-within:shadow-lg">
+      <div className="flex items-center gap-2 border border-gray-300 bg-white p-3 transition-all duration-300 focus-within:border-gray-900">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -124,7 +124,7 @@ export default function ChatInput({ onSendMessage, disabled, onFileUpload }: Cha
           size="icon"
           disabled={!message.trim() || disabled}
           className={cn(
-            "shrink-0 rounded-xl bg-gradient-primary transition-all duration-300 hover:brightness-90",
+            "shrink-0 bg-gradient-primary transition-all duration-300 hover:brightness-90",
             message.trim() && !disabled ? "scale-100 opacity-100" : "scale-90 opacity-50"
           )}
         >
