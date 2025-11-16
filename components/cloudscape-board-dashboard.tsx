@@ -183,6 +183,60 @@ export function CloudscapeBoardDashboard({
           transition: none !important;
           animation: none !important;
         }
+
+        /* Custom styling for Cloudscape board components */
+        .awsui-board {
+          background: transparent !important;
+        }
+
+        .awsui-board-item {
+          background: rgb(255, 255, 255) !important;
+          border: 1px solid rgb(229, 229, 229) !important;
+          border-radius: 0.5rem !important;
+          box-shadow: 0 1px 3px 0px rgb(0 0 0 / 0.05) !important;
+        }
+
+        .awsui-board-item:hover {
+          box-shadow: 0 1px 3px 0px rgb(0 0 0 / 0.10), 0 2px 4px -1px rgb(0 0 0 / 0.10) !important;
+        }
+
+        .awsui-board-item-header {
+          font-family: var(--font-instrument-serif), serif !important;
+          font-size: 1.25rem !important;
+          font-weight: 400 !important;
+          border-bottom: 1px solid rgb(229, 229, 229) !important;
+          padding: 1rem !important;
+        }
+
+        .awsui-board-item-content {
+          padding: 1rem !important;
+        }
+
+        /* Drag handle styling */
+        .awsui-board-item [data-drag-handle] {
+          color: rgb(110, 76, 65) !important;
+        }
+
+        .awsui-board-item [data-drag-handle]:hover {
+          color: rgb(48, 123, 52) !important;
+        }
+
+        /* Resize handle styling */
+        .awsui-board-item [data-resize-handle] {
+          color: rgb(110, 76, 65) !important;
+        }
+
+        .awsui-board-item [data-resize-handle]:hover {
+          color: rgb(48, 123, 52) !important;
+        }
+
+        /* Empty state */
+        .awsui-board-empty {
+          background: rgb(255, 255, 255) !important;
+          border: 1px dashed rgb(229, 229, 229) !important;
+          border-radius: 0.5rem !important;
+          color: rgb(110, 76, 65) !important;
+        }
       `}</style>
       <Board
         items={boardItems}

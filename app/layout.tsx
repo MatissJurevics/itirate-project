@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from "@/components/ui/toaster"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SidebarWrapper } from "@/components/sidebar-wrapper"
+import { CloudscapeThemeProvider } from "@/components/cloudscape-theme-provider"
 import '@cloudscape-design/global-styles/index.css'
 import './globals.css'
 
@@ -44,6 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased ${instrumentSerif.variable}`}>
+        <CloudscapeThemeProvider />
         <TooltipProvider>
           <SidebarWrapper>
             {children}

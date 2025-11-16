@@ -45,6 +45,9 @@ export function DashboardChart({
           height: chartHeight,
           width: null, // Auto-resize to container width
         },
+        title: {
+          text: undefined, // Hide title - it's shown in the widget header
+        },
       }
     }
 
@@ -56,7 +59,7 @@ export function DashboardChart({
     return buildChartOptions({
       type,
       data,
-      title,
+      title: undefined, // Hide title - it's shown in the widget header
       categories,
       height: chartHeight,
       mapData,
