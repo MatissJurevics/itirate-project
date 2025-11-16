@@ -11,6 +11,63 @@ import { useHighchartsChart } from "@/hooks/use-highcharts-chart"
 import { useCopyChartToClipboard } from "@/hooks/use-copy-chart"
 import { Copy, Check } from "lucide-react"
 
+/**
+ * Clean chart options by removing invalid function references
+ * This is needed because functions get lost during JSON serialization/deserialization
+ */
+function cleanChartConfig(config: Highcharts.Options): Highcharts.Options {
+  if (!config || typeof config !== 'object') {
+    return config
+  }
+
+  // Deep clone to avoid mutating the original
+  let cleaned: any
+  try {
+    cleaned = JSON.parse(JSON.stringify(config)) as any
+  } catch (error) {
+    console.warn('Failed to deep clone chart config:', error)
+    cleaned = { ...config } as any
+  }
+
+  // Recursively remove any formatter/callback properties that aren't functions
+  function removeInvalidFunctions(obj: any, path = ''): void {
+    if (!obj || typeof obj !== 'object') {
+      return
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        if (item && typeof item === 'object') {
+          removeInvalidFunctions(item, `${path}[${index}]`)
+        }
+      })
+      return
+    }
+
+    // Handle objects
+    Object.keys(obj).forEach((key) => {
+      const value = obj[key]
+      const currentPath = path ? `${path}.${key}` : key
+
+      // Remove formatter/callback properties that aren't functions
+      if ((key.includes('formatter') || key.includes('callback')) && typeof value !== 'function') {
+        if (value !== null && value !== undefined) {
+          delete obj[key]
+        }
+      }
+
+      // Recursively clean nested objects and arrays
+      if (value && typeof value === 'object') {
+        removeInvalidFunctions(value, currentPath)
+      }
+    })
+  }
+
+  removeInvalidFunctions(cleaned)
+  return cleaned as Highcharts.Options
+}
+
 interface DashboardChartProps {
   type?: ChartType
   data?: any
@@ -45,10 +102,13 @@ export const DashboardChart = React.forwardRef<any, DashboardChartProps>(functio
   const options: Highcharts.Options = React.useMemo(() => {
     // If highchartsConfig is provided, use it directly (with height override for responsiveness)
     if (highchartsConfig) {
+      // Clean the config first to remove any invalid function references from database storage
+      const cleanedConfig = cleanChartConfig(highchartsConfig)
+      
       const config: Highcharts.Options = {
-        ...highchartsConfig,
+        ...cleanedConfig,
         chart: {
-          ...highchartsConfig.chart,
+          ...cleanedConfig.chart,
           height: chartHeight,
           width: null, // Auto-resize to container width
         },

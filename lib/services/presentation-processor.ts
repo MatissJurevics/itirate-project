@@ -335,7 +335,66 @@ async function generateAudio(
 }
 
 /**
+ * Clean chart options by removing invalid function references
+ * Functions get lost during JSON serialization/deserialization, so we need to remove
+ * properties that should be functions but are strings/null/undefined
+ */
+function cleanChartOptionsForRender(options: any): any {
+  if (!options || typeof options !== 'object') {
+    return options
+  }
+
+  // Deep clone to avoid mutating the original
+  let cleaned: any
+  try {
+    cleaned = JSON.parse(JSON.stringify(options))
+  } catch (error) {
+    console.warn('Failed to deep clone chart options:', error)
+    cleaned = { ...options }
+  }
+
+  // Recursively remove any formatter/callback properties that aren't functions
+  function removeInvalidFunctions(obj: any): void {
+    if (!obj || typeof obj !== 'object') {
+      return
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      obj.forEach((item) => {
+        if (item && typeof item === 'object') {
+          removeInvalidFunctions(item)
+        }
+      })
+      return
+    }
+
+    // Handle objects
+    Object.keys(obj).forEach((key) => {
+      const value = obj[key]
+
+      // Remove formatter/callback properties that aren't functions
+      if ((key.includes('formatter') || key.includes('callback')) && typeof value !== 'function') {
+        if (value !== null && value !== undefined) {
+          delete obj[key]
+        }
+      }
+
+      // Recursively clean nested objects and arrays
+      if (value && typeof value === 'object') {
+        removeInvalidFunctions(value)
+      }
+    })
+  }
+
+  removeInvalidFunctions(cleaned)
+  return cleaned
+}
+
+/**
  * Render chart as image using Puppeteer
+ * Chart options are cleaned to remove invalid formatter functions that may have been
+ * corrupted during database storage (JSON serialization loses functions)
  */
 async function renderChartToImage(
   chartOptions: any,
@@ -361,8 +420,8 @@ async function renderChartToImage(
     const page = await browser.newPage();
     await page.setViewport({ width: 1920, height: 1080 });
     
-    // Clean chart config - remove any functions or circular refs
-    const cleanConfig = JSON.parse(JSON.stringify(chartOptions));
+    // Clean chart config - remove any functions, circular refs, and invalid formatters
+    const cleanConfig = cleanChartOptionsForRender(chartOptions);
     
     // Ensure chart has explicit dimensions
     const chartConfigWithDimensions = {

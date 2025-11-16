@@ -212,6 +212,8 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         content: enhancedMessage
       }]
 
+      console.log('Sending chat request:', { messageCount: apiMessages.length, csvId, dashboardId })
+
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -222,9 +224,18 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         })
       })
 
+      console.log('Response status:', response.status, response.statusText)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
       if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
+        const errorText = await response.text().catch(() => 'Unable to read error')
+        console.error('API error response:', errorText)
+        throw new Error(`API error: ${response.statusText} - ${errorText}`)
       }
+
+      // Check content type
+      const contentType = response.headers.get('content-type') || ''
+      console.log('Content-Type:', contentType)
 
       // Handle streaming response
       const reader = response.body?.getReader()
@@ -235,12 +246,20 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
       }
 
       let fullContent = ""
+      let chunkCount = 0
 
       while (true) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          console.log('Stream finished. Total chunks:', chunkCount, 'Content length:', fullContent.length)
+          break
+        }
 
-        const chunk = decoder.decode(value)
+        chunkCount++
+        // Use stream: true to handle multi-byte characters that might be split across chunks
+        const chunk = decoder.decode(value, { stream: true })
+        console.log(`Chunk ${chunkCount}:`, chunk.substring(0, 100))
+        
         fullContent += chunk
 
         // Update the assistant message with cleaned streaming content
@@ -253,10 +272,32 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         )
       }
 
-      // Save assistant message to database after streaming completes
-      if (fullContent) {
+      // Final decode for any remaining bytes in the decoder buffer
+      const finalChunk = decoder.decode()
+      if (finalChunk) {
+        fullContent += finalChunk
+        console.log('Final chunk:', finalChunk.substring(0, 100))
+      }
+
+      console.log('Final content:', fullContent.substring(0, 200))
+
+      // Handle empty response - might be tool-only response
+      if (!fullContent.trim()) {
+        console.warn('Empty response received - likely tool-only call')
+        const fallbackMessage = "I've processed your request. Please check your dashboard to see the changes."
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: fallbackMessage }
+              : msg
+          )
+        )
+        saveMessageToDb("assistant", fallbackMessage)
+      } else {
+        // Save assistant message to database after streaming completes
         const cleanedContent = cleanMessageContent(fullContent)
         saveMessageToDb("assistant", cleanedContent)
+      }
 
         // Check if a chart was generated or updated (look for chart/widget-related keywords in response)
         const chartModified =

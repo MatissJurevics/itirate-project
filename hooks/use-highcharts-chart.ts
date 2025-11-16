@@ -72,12 +72,28 @@ function cleanChartOptions(options: Highcharts.Options): Highcharts.Options {
         }
         // Remove any other function-like properties that aren't actually functions
         Object.keys(series).forEach((key) => {
-          if (key.includes('formatter') || key.includes('callback')) {
-            if (typeof series[key] !== 'function' && series[key] !== null && series[key] !== undefined) {
+          if ((key.includes('formatter') || key.includes('callback')) && typeof series[key] !== 'function') {
+            // Only delete if it's not null/undefined (those are valid)
+            if (series[key] !== null && series[key] !== undefined) {
               delete series[key]
             }
           }
         })
+        // Also clean nested objects in series
+        if (series.data && Array.isArray(series.data)) {
+          series.data = series.data.map((dataPoint: any) => {
+            if (dataPoint && typeof dataPoint === 'object') {
+              Object.keys(dataPoint).forEach((key) => {
+                if ((key.includes('formatter') || key.includes('callback')) && typeof dataPoint[key] !== 'function') {
+                  if (dataPoint[key] !== null && dataPoint[key] !== undefined) {
+                    delete dataPoint[key]
+                  }
+                }
+              })
+            }
+            return dataPoint
+          })
+        }
       }
       return series
     })
