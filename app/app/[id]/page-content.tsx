@@ -361,6 +361,52 @@ export function PageContent({ id }: PageContentProps) {
       if (error) {
         console.error("Failed to reload widgets:", error)
         return
+        return;
+      }
+      let chartsData: any[] = []
+      let chartsError: any = null
+      
+      const chartsResult = await supabase
+        .from("charts")
+        .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
+        .eq("dashboard_id", id)
+        .order("created_at", { ascending: true })
+      
+      chartsData = chartsResult.data || []
+      chartsError = chartsResult.error
+      
+      if (chartsError) {
+        const errorMessage = chartsError.message || JSON.stringify(chartsError)
+        const errorCode = chartsError.code || 'unknown'
+        
+        console.error("Failed to reload charts:", {
+          error: chartsError,
+          message: errorMessage,
+          details: chartsError.details,
+          hint: chartsError.hint,
+          code: errorCode,
+          dashboardId: id,
+          fullError: JSON.stringify(chartsError, null, 2)
+        })
+        
+        // If column doesn't exist, try without dashboard_id filter as fallback
+        if (errorMessage.includes('column') && errorMessage.includes('dashboard_id')) {
+          console.warn("dashboard_id column may not exist, trying without filter...")
+          const fallbackResult = await supabase
+            .from("charts")
+            .select("id, chart_options, chart_type, sql_query, user_prompt, created_at")
+            .order("created_at", { ascending: true })
+          
+          if (!fallbackResult.error) {
+            chartsData = fallbackResult.data || []
+            chartsError = null
+            console.log("Fallback query succeeded, found", chartsData.length, "charts")
+          } else {
+            return
+          }
+        } else {
+          return
+        }
       }
 
       const refreshedWidgets = ensureWidgetIds(convertStoredWidgets(data?.widgets || []))

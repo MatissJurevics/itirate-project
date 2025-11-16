@@ -81,6 +81,95 @@ const MemoizedChartWrapper = React.memo(
   }
 )
 
+// Separate component for board items to allow proper hook usage
+// This MUST be a separate component because hooks cannot be called inside callbacks
+interface BoardItemComponentProps {
+  widget: Widget
+  onWidgetDelete?: (widgetId: string) => void
+  dashboardId?: string
+}
+
+const BoardItemComponent = React.memo(({ widget, onWidgetDelete, dashboardId }: BoardItemComponentProps) => {
+  const chartRef = React.useRef<any>(null)
+  const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartRef)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+
+  const handleCopy = React.useCallback(async () => {
+    await copyChartToClipboard()
+  }, [copyChartToClipboard])
+
+  const handleDeleteClick = React.useCallback(() => {
+    setShowDeleteConfirm(true)
+  }, [])
+
+  const handleDeleteConfirm = React.useCallback(async () => {
+    if (!onWidgetDelete || !dashboardId) return
+    
+    setIsDeleting(true)
+    setShowDeleteConfirm(false)
+    try {
+      await onWidgetDelete(widget.id)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [onWidgetDelete, dashboardId, widget.id])
+
+  return (
+    <>
+      <BoardItem
+        header={widget.title || "Chart"}
+        settings={
+          <SpaceBetween direction="horizontal" size="xs">
+            <Button
+              variant="icon"
+              iconName={copySuccess ? "check" : "copy"}
+              onClick={handleCopy}
+              loading={isCopying}
+              ariaLabel="Copy chart to clipboard"
+            />
+            {onWidgetDelete && (
+              <Button
+                variant="icon"
+                iconName="remove"
+                onClick={handleDeleteClick}
+                loading={isDeleting}
+                ariaLabel="Delete widget"
+              />
+            )}
+          </SpaceBetween>
+        }
+        i18nStrings={{
+          dragHandleAriaLabel: "Drag handle",
+          dragHandleAriaDescription:
+            "Use arrow keys to move the item, Space to complete drag, Escape to cancel drag.",
+          resizeHandleAriaLabel: "Resize handle",
+          resizeHandleAriaDescription:
+            "Use arrow keys to resize the item, Space to complete resize, Escape to cancel resize.",
+        }}
+      >
+        <MemoizedChartWrapper ref={chartRef} widget={widget} />
+      </BoardItem>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Widget</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{widget.title || 'this widget'}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+})
+
+BoardItemComponent.displayName = "BoardItemComponent"
+
 interface CloudscapeBoardDashboardProps {
   widgets: Widget[]
   onItemsChange: (items: Widget[]) => void
@@ -158,86 +247,8 @@ export function CloudscapeBoardDashboard({
       const widget = item.data || widgetsMap.get(item.id)
       if (!widget) return null
 
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const chartRef = React.useRef<any>(null)
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartRef)
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const [isDeleting, setIsDeleting] = React.useState(false)
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
-
-      const handleCopy = async () => {
-        await copyChartToClipboard()
-      }
-
-      const handleDeleteClick = () => {
-        setShowDeleteConfirm(true)
-      }
-
-      const handleDeleteConfirm = async () => {
-        if (!onWidgetDelete || !dashboardId) return
-        
-        setIsDeleting(true)
-        setShowDeleteConfirm(false)
-        try {
-          await onWidgetDelete(widget.id)
-        } finally {
-          setIsDeleting(false)
-        }
-      }
-
-      return (
-        <>
-          <BoardItem
-            header={widget.title || "Chart"}
-            settings={
-              <SpaceBetween direction="horizontal" size="xs">
-                <Button
-                  variant="icon"
-                  iconName={copySuccess ? "check" : "copy"}
-                  onClick={handleCopy}
-                  loading={isCopying}
-                  ariaLabel="Copy chart to clipboard"
-                />
-                {onWidgetDelete && (
-                  <Button
-                    variant="icon"
-                    iconName="remove"
-                    onClick={handleDeleteClick}
-                    loading={isDeleting}
-                    ariaLabel="Delete widget"
-                  />
-                )}
-              </SpaceBetween>
-            }
-            i18nStrings={{
-              dragHandleAriaLabel: "Drag handle",
-              dragHandleAriaDescription:
-                "Use arrow keys to move the item, Space to complete drag, Escape to cancel drag.",
-              resizeHandleAriaLabel: "Resize handle",
-              resizeHandleAriaDescription:
-                "Use arrow keys to resize the item, Space to complete resize, Escape to cancel resize.",
-            }}
-          >
-            <MemoizedChartWrapper ref={chartRef} widget={widget} />
-          </BoardItem>
-          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Widget</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{widget.title || 'this widget'}"? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
-      )
+      // Render the separate component that can properly use hooks
+      return <BoardItemComponent widget={widget} onWidgetDelete={onWidgetDelete} dashboardId={dashboardId} />
     },
     [widgetsMap, onWidgetDelete, dashboardId]
   )
