@@ -17,7 +17,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { FileText, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
+import { FileText, ChevronDown, ChevronUp, AlertCircle } from "lucide-react"
+import { DatasetBadge } from "@/components/dataset-badge"
+import { DatasetSelectorPopover } from "@/components/dataset-selector-popover"
+import { toast } from "sonner"
 import { adaptChartData, type ChartApiResponse } from "@/lib/charts/adapter"
 import type { ChartType } from "@/lib/charts/types"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -55,12 +58,88 @@ export function PageContent({ id }: PageContentProps) {
   const [isAudioBarCollapsed, setIsAudioBarCollapsed] = React.useState(true)
   const { state: sidebarState } = useSidebar()
   const audioRef = React.useRef<HTMLAudioElement>(null)
+  const [datasets, setDatasets] = React.useState<any[]>([])
+  const [loadingDatasets, setLoadingDatasets] = React.useState(false)
+  const [availableDatasets, setAvailableDatasets] = React.useState<any[] | null>(null)
+
+  // Restore chat sidebar open state from localStorage
+  React.useEffect(() => {
+    const savedState = localStorage.getItem('chatSidebarOpen')
+    if (savedState !== null) {
+      try {
+        setIsChatOpen(JSON.parse(savedState))
+      } catch (error) {
+        console.error('Failed to parse chatSidebarOpen state:', error)
+      }
+    }
+  }, [])
 
   // Derive values from dashboard (database)
   const csvTableName = dashboard?.csv_table_name || ""
   const fileName = dashboard?.file_name || ""
   const rowCount = dashboard?.row_count?.toString() || ""
   const initialPrompt = dashboard?.initial_prompt || ""
+
+  // Load datasets when dashboard loads
+  React.useEffect(() => {
+    if (dashboard) {
+      setDatasets(dashboard.datasets || [])
+    }
+  }, [dashboard])
+
+  const handleAddDataset = async (dataset: { tableName: string; fileName: string; rowCount: number }) => {
+    setLoadingDatasets(true)
+    try {
+      const response = await fetch(`/api/dashboard/${id}/datasets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataset)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add dataset')
+      }
+
+      setDatasets(data.datasets)
+      toast.success(`${dataset.fileName} has been added to this dashboard.`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add dataset')
+    } finally {
+      setLoadingDatasets(false)
+    }
+  }
+
+  const handleRemoveDataset = async (tableName: string) => {
+    setLoadingDatasets(true)
+    try {
+      const response = await fetch(`/api/dashboard/${id}/datasets?tableName=${tableName}`, {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove dataset')
+      }
+
+      setDatasets(data.datasets)
+      toast.success("The dataset has been removed from this dashboard.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to remove dataset')
+    } finally {
+      setLoadingDatasets(false)
+    }
+  }
+
+  const handleUploadNew = () => {
+    toast.info("CSV upload will be implemented soon!")
+  }
+
+  const handleDatasetsFetched = (fetchedDatasets: any[]) => {
+    setAvailableDatasets(fetchedDatasets)
+  }
 
   const ensureWidgetIds = React.useCallback((widgets: any[]): Widget[] => {
     return widgets.map((widget: any, index: number) => {
@@ -124,6 +203,16 @@ export function PageContent({ id }: PageContentProps) {
           .select("*")
           .eq("id", id)
           .single()
+
+        // Migrate old single dataset to datasets array if needed
+        if (data && !data.datasets && data.csv_table_name) {
+          data.datasets = [{
+            tableName: data.csv_table_name,
+            fileName: data.file_name || data.csv_table_name,
+            rowCount: data.row_count || 0,
+            addedAt: data.created_at || new Date().toISOString()
+          }]
+        }
 
         if (error) {
           console.error("Failed to fetch dashboard:", error)
@@ -297,75 +386,64 @@ export function PageContent({ id }: PageContentProps) {
           }
         />
 
-        {/* Optional: Dataset info header only when URL provides info */}
-        {(fileName || rowCount || initialPrompt) && (
-          <div className="px-4 pt-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h2 className="text-lg font-semibold mb-2">Dataset Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">File:</span>
-                  <span className="ml-2 font-medium">
-                    {fileName || "Unknown"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Rows:</span>
-                  <span className="ml-2 font-medium">
-                    {rowCount || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Table:</span>
-                  <span className="ml-2 font-mono text-xs bg-muted px-2 py-1 rounded">
-                    {csvTableName ? `csv_to_table.${csvTableName}` : 'N/A'}
-                  </span>
-                </div>
-              </div>
-              {initialPrompt && (
-                <div className="mt-3 pt-3 border-t">
-                  <span className="text-muted-foreground">Initial Prompt:</span>
-                  <p className="mt-1 text-sm italic">{initialPrompt}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {loading ? (
           <div className="px-4 pt-4 pb-2">
             <div className="h-14 w-64 bg-muted/50 animate-pulse rounded" />
             <div className="h-px bg-border mt-2 mb-4" />
           </div>
         ) : dashboard?.title ? (
-          <PageTitle
-            editable={true}
-            onEdit={async (newTitle: string) => {
-              try {
-                const supabase = createClient()
-                const { error } = await supabase
-                  .from("dashboards")
-                  .update({ title: newTitle })
-                  .eq("id", id)
+          <>
+            <PageTitle
+              editable={true}
+              onEdit={async (newTitle: string) => {
+                try {
+                  const supabase = createClient()
+                  const { error } = await supabase
+                    .from("dashboards")
+                    .update({ title: newTitle })
+                    .eq("id", id)
 
-                if (error) {
-                  console.error("Failed to update title:", error)
+                  if (error) {
+                    console.error("Failed to update title:", error)
+                    throw error
+                  }
+
+                  // Update local state
+                  setDashboard((prev: any) => ({
+                    ...prev,
+                    title: newTitle,
+                  }))
+                } catch (error) {
+                  console.error("Error updating title:", error)
                   throw error
                 }
-
-                // Update local state
-                setDashboard((prev: any) => ({
-                  ...prev,
-                  title: newTitle,
-                }))
-              } catch (error) {
-                console.error("Error updating title:", error)
-                throw error
-              }
-            }}
-          >
-            {dashboard.title}
-          </PageTitle>
+              }}
+            >
+              {dashboard.title}
+            </PageTitle>
+            {/* Dataset badges - directly below title */}
+            <div className="px-4 pb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {datasets.map((dataset: any) => (
+                  <DatasetBadge
+                    key={dataset.tableName}
+                    tableName={dataset.tableName}
+                    fileName={dataset.fileName}
+                    rowCount={dataset.rowCount}
+                    addedAt={dataset.addedAt}
+                    onRemove={handleRemoveDataset}
+                  />
+                ))}
+                <DatasetSelectorPopover
+                  onDatasetSelect={handleAddDataset}
+                  onUploadNew={handleUploadNew}
+                  excludeDatasets={datasets.map((d: any) => d.tableName)}
+                  cachedDatasets={availableDatasets}
+                  onDatasetsFetched={handleDatasetsFetched}
+                />
+              </div>
+            </div>
+          </>
         ) : null}
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0 overflow-y-auto">
           {loading ? (

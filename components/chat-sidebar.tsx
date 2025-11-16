@@ -41,6 +41,13 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
     setMounted(true)
   }, [])
 
+  // Persist open state to localStorage
+  React.useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('chatSidebarOpen', JSON.stringify(open))
+    }
+  }, [open, mounted])
+
   // Load chat history from database when dashboard opens
   React.useEffect(() => {
     const loadChatHistory = async () => {
@@ -233,12 +240,9 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
   return (
     <div
       className={cn(
-        "flex flex-col bg-background border-l transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+        "fixed right-0 top-0 flex flex-col bg-background border-l transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-screen z-50",
         open ? "w-[24rem] opacity-100" : "w-0 opacity-0 border-0"
       )}
-      style={{
-        height: "100%",
-      }}
     >
       <div className="flex h-16 shrink-0 items-center justify-between px-4">
         <h2 className="text-2xl font-fancy">Procure AI</h2>
@@ -283,12 +287,14 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
                   )}
                 >
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                    {message.content || (isLoading && message.role === "assistant" ? (
+                    {message.content ? (
+                      cleanMessageContent(message.content)
+                    ) : isLoading && message.role === "assistant" ? (
                       <span className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Thinking...
                       </span>
-                    ) : message.content)}
+                    ) : null}
                   </p>
                   <div className="mt-1.5 flex items-center justify-end">
                     <span className="text-xs opacity-60">
