@@ -214,7 +214,7 @@ export default function Home() {
         className="mr-2 data-[orientation=vertical]:h-4"
       />
     </header>
-      <div className="relative flex h-screen items-center justify-center overflow-hidden bg-background">
+      <div className="relative flex items-center justify-center overflow-hidden bg-background" style={{ height: 'calc(100vh - 4rem)' }}>
         {/* Dot Matrix Background */}
         <div className="absolute h-full w-full bg-[radial-gradient(rgb(223_214_201)_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
 
@@ -249,9 +249,9 @@ export default function Home() {
             <div className="space-y-8">
               {/* Welcome Text */}
               <div className="text-center space-y-3 animate-fade-in">
-                <h1 className="text-5xl font-bold text-foreground">Welcome to Procure</h1>
+                <h1 className="text-7xl text-foreground font-fancy">Procurement Made <span className="italic font-normal">Painless</span></h1>
                 <h3 className="text-xl text-center text-muted-foreground">
-                  Generate dynamic dashboards based on your procurement data.
+                  Get accurate and simple insights into your data.
                 </h3>
               </div>
 

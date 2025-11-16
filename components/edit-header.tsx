@@ -30,7 +30,7 @@ export function EditHeader({ name, onChatOpen }: EditHeaderProps) {
         <Breadcrumb className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="#">
+              <BreadcrumbLink href="/app">
                 Dashboards
               </BreadcrumbLink>
             </BreadcrumbItem>

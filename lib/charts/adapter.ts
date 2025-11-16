@@ -19,6 +19,8 @@ export interface ChartApiResponse {
 }
 
 export interface ChartWidget {
+  id?: string
+  chartId?: string
   type?: ChartType
   data?: any
   title?: string
@@ -82,6 +84,8 @@ export function adaptChartData(apiResponse: ChartApiResponse): ChartWidget {
     }
     
     return {
+      id: apiResponse.chartId,
+      chartId: apiResponse.chartId,
       highchartsConfig: normalizedConfig,
       title: title,
     }
@@ -91,6 +95,8 @@ export function adaptChartData(apiResponse: ChartApiResponse): ChartWidget {
   if (apiResponse.widgetConfig) {
     const widget = apiResponse.widgetConfig
     return {
+      id: apiResponse.chartId,
+      chartId: apiResponse.chartId,
       type: widget.widgetType as ChartType | undefined,
       data: widget.data,
       title: widget.title,
@@ -99,6 +105,8 @@ export function adaptChartData(apiResponse: ChartApiResponse): ChartWidget {
 
   // Fallback: extract from top-level fields
   return {
+    id: apiResponse.chartId,
+    chartId: apiResponse.chartId,
     type: apiResponse.chartType as ChartType | undefined,
     data: apiResponse.dataPreview,
     // No title available in fallback
