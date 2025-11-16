@@ -8,6 +8,7 @@ import { ChatSidebar } from "@/components/chat-sidebar"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { CloudscapeBoardDashboard } from "@/components/cloudscape-board-dashboard"
+import { VoiceGenerationButton } from "@/components/voice-generation-button"
 import {
   Dialog,
   DialogContent,
@@ -414,6 +415,21 @@ export function PageContent({ id }: PageContentProps) {
               <span className="text-sm text-muted-foreground">No audio available</span>
             </div>
           )}
+          <VoiceGenerationButton 
+            dashboardId={id}
+            className="h-8"
+            onAudioGenerated={(audioUrl, transcript) => {
+              // Update dashboard state with new audio
+              setDashboard((prev: any) => ({
+                ...prev,
+                audio: audioUrl,
+                transcript: transcript,
+              }));
+              
+              // Keep audio bar expanded
+              setIsAudioBarCollapsed(false);
+            }}
+          />
           {transcript && (
             <Dialog open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
               <DialogTrigger asChild>
