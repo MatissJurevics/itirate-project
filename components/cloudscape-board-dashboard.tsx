@@ -32,6 +32,11 @@ export function CloudscapeBoardDashboard({
   widgets,
   onItemsChange,
 }: CloudscapeBoardDashboardProps) {
+  // Create Map for O(1) widget lookups instead of O(n) array.find()
+  const widgetsMap = React.useMemo(() => {
+    return new Map(widgets.map(w => [w.id, w]))
+  }, [widgets])
+
   const handleItemsChange = React.useCallback(
     (event: CustomEvent<BoardProps.ItemsChangeDetail<Widget>>) => {
       // Extract detail from CustomEvent
@@ -44,7 +49,8 @@ export function CloudscapeBoardDashboard({
       }
 
       const updatedWidgets = detail.items.map((item) => {
-        const originalWidget = widgets.find((w) => w.id === item.id)
+        // Use Map.get() for O(1) lookup instead of array.find() O(n)
+        const originalWidget = widgetsMap.get(item.id)
         if (!originalWidget) {
           console.warn(`Widget not found for id: ${item.id}`)
           return null
@@ -65,7 +71,7 @@ export function CloudscapeBoardDashboard({
         onItemsChange(updatedWidgets)
       }
     },
-    [widgets, onItemsChange]
+    [widgetsMap, onItemsChange]
   )
 
   const boardItems = React.useMemo(() => {
@@ -86,7 +92,8 @@ export function CloudscapeBoardDashboard({
 
   const renderItem = React.useCallback(
     (item: BoardProps.Item<Widget>) => {
-      const widget = item.data || widgets.find((w) => w.id === item.id)
+      // Use Map.get() for O(1) lookup instead of array.find() O(n)
+      const widget = item.data || widgetsMap.get(item.id)
       if (!widget) return null
 
       return (
@@ -124,7 +131,7 @@ export function CloudscapeBoardDashboard({
         </BoardItem>
       )
     },
-    [widgets]
+    [widgetsMap]
   )
 
   const i18nStrings: BoardProps.I18nStrings<Widget> = React.useMemo(
