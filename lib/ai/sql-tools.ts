@@ -6,6 +6,7 @@ import { SQLDiffTracker } from '../services/sql-diff';
 import { highchartsTools } from './highcharts-tools';
 import { saveDashboardWidget } from '../dashboard-widget-tool';
 import { updateDashboardWidget } from '../update-widget-tool';
+import { deleteDashboardWidget } from '../delete-widget-tool';
 
 // Tool execution context type
 export interface SQLToolContext {
@@ -441,6 +442,49 @@ Please analyze this data and create an appropriate chart visualization.
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error during widget update',
+        };
+      }
+    },
+  }),
+
+  delete_widget: tool({
+    description: `Delete an existing chart widget from the dashboard. 
+    Use this when users want to remove charts (e.g., "delete the pie chart", "remove first widget", "delete the sales chart").
+    You can identify widgets by position (first, second, last) or by type/title matching.`,
+    inputSchema: z.object({
+      widgetIdentifier: z.string().describe('How to identify the widget: "first", "second", "last", or partial title match like "sales", "pie", "categories"'),
+      confirmDeletion: z.boolean().optional().default(true).describe('Confirmation that deletion should proceed')
+    }),
+    execute: async ({ widgetIdentifier, confirmDeletion }) => {
+      console.log(`🗑️  Deleting widget: ${widgetIdentifier}`);
+      console.log(`✅ Confirmed: ${confirmDeletion}`);
+
+      if (!context.dashboardId) {
+        return {
+          success: false,
+          error: 'Dashboard ID is required to delete widgets',
+        };
+      }
+
+      try {
+        // Use the delete tool
+        const deleteResult = await deleteDashboardWidget.execute({
+          dashboardId: context.dashboardId,
+          widgetIdentifier,
+          confirmDeletion
+        }, {
+          toolCallId: 'chat-delete',
+          messages: [],
+          abortSignal: undefined
+        });
+
+        return deleteResult;
+
+      } catch (error) {
+        console.error('Widget deletion error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error during widget deletion',
         };
       }
     },
