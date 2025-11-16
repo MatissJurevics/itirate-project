@@ -140,17 +140,19 @@ export default function Home() {
       }
     }
 
-    setLoadingStatus('Redirecting to dashboard...')
+    setLoadingStatus('Redirecting to app...')
 
-    // Navigate to dashboard with params
+    // Extract csvId from tableName (remove 'csv_' prefix)
+    const csvId = tableName.replace(/^csv_/, '')
+
+    // Navigate to app with csvId in route and prompt in query params
     const params = new URLSearchParams({
       prompt: promptText,
-      ...(tableName && { table: tableName }),
       ...(selectedFile && { fileName: selectedFile.name }),
       ...(rowCount > 0 && { rows: rowCount.toString() })
     })
 
-    router.push(`/dashboard?${params.toString()}`)
+    router.push(`/app/${csvId}?${params.toString()}`)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

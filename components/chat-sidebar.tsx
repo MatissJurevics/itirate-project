@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Send, X } from "lucide-react"
+import { Send, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -22,24 +22,29 @@ interface Message {
 interface ChatSidebarProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  csvId?: string
+  initialPrompt?: string
 }
 
-export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
+export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt }: ChatSidebarProps) {
   const [mounted, setMounted] = React.useState(false)
-  const [messages, setMessages] = React.useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! How can I help you edit this page?",
-      role: "assistant",
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = React.useState<Message[]>([])
   const [inputValue, setInputValue] = React.useState("")
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [initialPromptSent, setInitialPromptSent] = React.useState(false)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Auto-send initial prompt when component mounts and csvId is available
+  React.useEffect(() => {
+    if (mounted && csvId && initialPrompt && !initialPromptSent && open) {
+      setInitialPromptSent(true)
+      sendMessage(initialPrompt)
+    }
+  }, [mounted, csvId, initialPrompt, initialPromptSent, open])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -49,29 +54,93 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
     scrollToBottom()
   }, [messages])
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return
+  const sendMessage = async (messageText: string) => {
+    if (!messageText.trim() || isLoading) return
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      content: messageText,
       role: "user",
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, newMessage])
-    setInputValue("")
+    setMessages((prev) => [...prev, userMessage])
+    setIsLoading(true)
 
-    // Simulate assistant response
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I received your message. This is a placeholder response.",
-        role: "assistant",
-        timestamp: new Date(),
+    // Create placeholder assistant message for streaming
+    const assistantMessageId = (Date.now() + 1).toString()
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      content: "",
+      role: "assistant",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, assistantMessage])
+
+    try {
+      // Prepare messages for API (convert to API format)
+      const apiMessages = [...messages, userMessage].map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: apiMessages,
+          csvId: csvId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`)
       }
-      setMessages((prev) => [...prev, assistantMessage])
-    }, 500)
+
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No response body')
+      }
+
+      let fullContent = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        fullContent += chunk
+
+        // Update the assistant message with streaming content
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: fullContent }
+              : msg
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Chat error:', error)
+      // Update assistant message with error
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId
+            ? { ...msg, content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }
+            : msg
+        )
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSend = () => {
+    sendMessage(inputValue)
+    setInputValue("")
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -96,7 +165,14 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
       }}
     >
         <div className="flex h-16 shrink-0 items-center justify-between border-b px-4">
-        <h2 className="text-lg font-semibold">Chat Assistant</h2>
+        <div>
+          <h2 className="text-lg font-semibold">Chat Assistant</h2>
+          {csvId && (
+            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+              Dataset: {csvId}
+            </p>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -109,6 +185,11 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
       </div>
       <Separator />
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {messages.length === 0 && (
+          <div className="text-center text-muted-foreground text-sm py-8">
+            {csvId ? "Ask questions about your data..." : "No dataset loaded"}
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}
@@ -133,7 +214,12 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
                   )}
                 >
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                    {message.content}
+                    {message.content || (isLoading && message.role === "assistant" ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Thinking...
+                      </span>
+                    ) : message.content)}
                   </p>
                   <div className="mt-1.5 flex items-center justify-end">
                     <span className="text-xs opacity-60">
@@ -165,11 +251,16 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
+            placeholder={csvId ? "Ask about your data..." : "Type your message..."}
             className="flex-1"
+            disabled={isLoading || !csvId}
           />
-          <Button onClick={handleSend} size="icon">
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSend} size="icon" disabled={isLoading || !csvId}>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             <span className="sr-only">Send message</span>
           </Button>
         </div>
@@ -177,4 +268,3 @@ export function ChatSidebar({ open, onOpenChange }: ChatSidebarProps) {
     </div>
   )
 }
-
