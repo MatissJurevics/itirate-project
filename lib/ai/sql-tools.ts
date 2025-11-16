@@ -5,6 +5,7 @@ import { SQLExecutor } from '../services/sql-executor';
 import { SQLDiffTracker } from '../services/sql-diff';
 import { highchartsTools } from './highcharts-tools';
 import { saveDashboardWidget } from '../dashboard-widget-tool';
+import { updateDashboardWidget } from '../update-widget-tool';
 
 // Tool execution context type
 export interface SQLToolContext {
@@ -320,6 +321,126 @@ Please analyze this data and create an appropriate chart visualization.
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error during chart generation',
+        };
+      }
+    },
+  }),
+
+  update_widget: tool({
+    description: `Update an existing chart widget based on user prompt. 
+    Use this when users want to modify existing charts (e.g., "make the first chart a pie chart", "change colors to blue", "update the title").
+    You can identify widgets by position (first, second, last) or by type/title.`,
+    inputSchema: z.object({
+      widgetIdentifier: z.string().describe('How to identify the widget: "first", "second", "last", or partial title match like "sales" or "categories"'),
+      updatePrompt: z.string().describe('What the user wants to change about the widget'),
+      newTitle: z.string().optional().describe('Optional new title for the widget'),
+      newChartType: z.string().optional().describe('Optional new chart type if specified by user'),
+    }),
+    execute: async ({ widgetIdentifier, updatePrompt, newTitle, newChartType }) => {
+      console.log(`🔄 Updating widget: ${widgetIdentifier}`);
+      console.log(`📝 Update request: ${updatePrompt}`);
+
+      if (!context.dashboardId) {
+        return {
+          success: false,
+          error: 'Dashboard ID is required to update widgets',
+        };
+      }
+
+      try {
+        // Import pool here to avoid circular dependency
+        const { pool } = await import('../postgres-client');
+        
+        const client = await pool.connect();
+        
+        try {
+          // Get current dashboard widgets
+          const dashboardResult = await client.query(`
+            SELECT widgets FROM dashboards WHERE id = $1
+          `, [context.dashboardId]);
+
+          if (dashboardResult.rows.length === 0) {
+            return {
+              success: false,
+              error: `Dashboard with ID ${context.dashboardId} not found`,
+            };
+          }
+
+          const widgets = dashboardResult.rows[0].widgets || [];
+          
+          if (widgets.length === 0) {
+            return {
+              success: false,
+              error: 'No widgets found in this dashboard',
+            };
+          }
+
+          // Find the widget based on identifier
+          let targetWidget = null;
+          let widgetIndex = -1;
+
+          const identifier = widgetIdentifier.toLowerCase();
+
+          if (identifier === 'first') {
+            targetWidget = widgets[0];
+            widgetIndex = 0;
+          } else if (identifier === 'second' && widgets.length > 1) {
+            targetWidget = widgets[1];
+            widgetIndex = 1;
+          } else if (identifier === 'third' && widgets.length > 2) {
+            targetWidget = widgets[2];
+            widgetIndex = 2;
+          } else if (identifier === 'last') {
+            targetWidget = widgets[widgets.length - 1];
+            widgetIndex = widgets.length - 1;
+          } else {
+            // Search by title or type match
+            for (let i = 0; i < widgets.length; i++) {
+              const widget = widgets[i];
+              const title = (widget.title || '').toLowerCase();
+              const type = (widget.type || '').toLowerCase();
+              
+              if (title.includes(identifier) || type.includes(identifier)) {
+                targetWidget = widget;
+                widgetIndex = i;
+                break;
+              }
+            }
+          }
+
+          if (!targetWidget) {
+            return {
+              success: false,
+              error: `Could not find widget matching "${widgetIdentifier}". Available widgets: ${widgets.map((w: any, i: number) => `${i + 1}. ${w.title || w.type || 'Untitled'}`).join(', ')}`,
+            };
+          }
+
+          console.log(`🎯 Found widget: ${targetWidget.title || targetWidget.type || 'Untitled'} (index: ${widgetIndex})`);
+
+          // Use the update tool
+          const updateResult = await updateDashboardWidget.execute({
+            dashboardId: context.dashboardId,
+            widgetId: targetWidget.id,
+            updatePrompt,
+            newTitle,
+            newChartType
+          }, {
+            toolCallId: 'chat-update',
+            messages: [],
+            abortSignal: undefined
+          });
+
+          return updateResult;
+
+        } finally {
+          client.release();
+        }
+
+      } catch (error) {
+        console.error('Widget update error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error during widget update',
         };
       }
     },
