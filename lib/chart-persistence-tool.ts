@@ -46,6 +46,7 @@ export const savePreparedChart = tool({
               sql_query TEXT NOT NULL,
               chart_type TEXT,
               user_prompt TEXT,
+              dashboard_id UUID,
               created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
               updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
               dashboard_id UUID REFERENCES dashboards(id) ON DELETE CASCADE
@@ -74,6 +75,20 @@ export const savePreparedChart = tool({
                 WHERE table_name = 'charts' AND column_name = 'dashboard_id'
               ) THEN
                 ALTER TABLE charts ADD COLUMN dashboard_id UUID REFERENCES dashboards(id) ON DELETE CASCADE;
+              END IF;
+            END $$;
+          `);
+
+          // Add dashboard_id column if it doesn't exist
+          await client.query(`
+            DO $$
+            BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'charts' AND column_name = 'dashboard_id'
+              ) THEN
+                ALTER TABLE charts ADD COLUMN dashboard_id UUID;
+                CREATE INDEX IF NOT EXISTS idx_charts_dashboard_id ON charts(dashboard_id);
               END IF;
             END $$;
           `);
