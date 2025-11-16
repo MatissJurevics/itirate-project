@@ -191,7 +191,7 @@ export default function Home() {
         className="mr-2 data-[orientation=vertical]:h-4"
       />
     </header>
-      <div className="relative flex h-screen items-center justify-center overflow-hidden bg-background">
+      <div className="relative flex items-center justify-center overflow-hidden bg-background" style={{ height: 'calc(100vh - 4rem)' }}>
         {/* Dot Matrix Background */}
         <div className="absolute h-full w-full bg-[radial-gradient(rgb(223_214_201)_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
 
