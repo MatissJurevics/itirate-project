@@ -37,7 +37,7 @@ function getModel() {
   }
 
   console.log('Using Anthropic model: claude-3-haiku-20240307');
-  return anthropic('claude-3-haiku-20240307');
+  return anthropic('claude-haiku-4-5-20251001');
 }
 
 export async function POST(req: Request) {
