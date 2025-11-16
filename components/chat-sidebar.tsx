@@ -1,7 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Send, X, Loader2 } from "lucide-react"
+import { Send, X, Loader2, BarChart3 } from "lucide-react"
+import { WidgetContextBadge } from "@/components/widget-context-badge"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -19,6 +22,15 @@ interface Message {
   timestamp: Date
 }
 
+interface WidgetContext {
+  widgetId: string
+  title?: string
+  type?: string
+  highchartsConfig?: any
+  data?: any
+  categories?: string[]
+}
+
 interface ChatSidebarProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -26,20 +38,24 @@ interface ChatSidebarProps {
   initialPrompt?: string
   dashboardId?: string
   onChartGenerated?: () => void
+  widgetContexts?: WidgetContext[]
+  onRemoveWidgetContext?: (widgetId: string) => void
 }
 
 // Helper function to clean up AI message content
 function cleanMessageContent(content: string): string {
-  // Remove markdown code blocks and tool call artifacts
+  // Remove thinking blocks, tool calls, and other artifacts
   return content
-    .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+    .replace(/<think>[\s\S]*?<\/think>/g, '') // Remove <think> blocks
+    .replace(/<chain_of_thought>[\s\S]*?<\/chain_of_thought>/g, '') // Remove chain of thought
+    .replace(/<thinking>[\s\S]*?<\/thinking>/g, '') // Remove thinking blocks
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '') // Remove tool call blocks
     .replace(/\[Tool call:[\s\S]*?\]/g, '') // Remove tool call references
     .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines
     .trim()
 }
 
-export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboardId, onChartGenerated }: ChatSidebarProps) {
+export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboardId, onChartGenerated, widgetContexts = [], onRemoveWidgetContext }: ChatSidebarProps) {
   const [mounted, setMounted] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([])
   const [inputValue, setInputValue] = React.useState("")
@@ -51,6 +67,12 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
   React.useEffect(() => {
     setMounted(true)
   }, [])
+
+  const handleRemoveContext = (widgetId: string) => {
+    if (onRemoveWidgetContext) {
+      onRemoveWidgetContext(widgetId)
+    }
+  }
 
   // Persist open state to localStorage
   React.useEffect(() => {
@@ -71,7 +93,7 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
           if (data.messages && data.messages.length > 0) {
             const loadedMessages: Message[] = data.messages.map((msg: any) => ({
               id: msg.id,
-              content: msg.content,
+              content: msg.role === "assistant" ? cleanMessageContent(msg.content) : msg.content,
               role: msg.role as "user" | "assistant",
               timestamp: new Date(msg.timestamp)
             }))
@@ -128,9 +150,38 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isLoading) return
 
+    // Capture current widget contexts before clearing
+    const currentContexts = [...widgetContexts]
+
+    // Prepend widget contexts if available
+    let enhancedMessage = messageText
+    let displayMessage = messageText
+
+    if (currentContexts.length > 0) {
+      const contextInfos = currentContexts.map((widget, idx) =>
+        `[Widget ${idx + 1}: "${widget.title || 'Untitled'}" (${widget.type || 'chart'})]\n${JSON.stringify({
+          type: widget.type,
+          title: widget.title,
+          highchartsConfig: widget.highchartsConfig,
+          data: widget.data,
+          categories: widget.categories
+        }, null, 2)}`
+      ).join('\n\n')
+      enhancedMessage = `[Context: Referring to ${currentContexts.length} widget(s)]\n\n${contextInfos}\n\nUser Request: ${messageText}`
+
+      // Add chart names to display message
+      const chartNames = currentContexts.map(w => w.title || 'Untitled').join(', ')
+      displayMessage = `${messageText}\n\n---\n*Included charts: ${chartNames}*`
+
+      // Clear contexts after capturing them
+      if (onRemoveWidgetContext) {
+        currentContexts.forEach(widget => onRemoveWidgetContext(widget.widgetId))
+      }
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: messageText,
+      content: displayMessage,
       role: "user",
       timestamp: new Date(),
     }
@@ -138,8 +189,8 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
 
-    // Save user message to database
-    saveMessageToDb("user", messageText)
+    // Save user message to database (with display message showing included charts)
+    saveMessageToDb("user", displayMessage)
 
     // Create placeholder assistant message for streaming
     const assistantMessageId = (Date.now() + 1).toString()
@@ -152,11 +203,14 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
     setMessages((prev) => [...prev, assistantMessage])
 
     try {
-      // Prepare messages for API (convert to API format)
-      const apiMessages = [...messages, userMessage].map(msg => ({
+      // Prepare messages for API (convert to API format) - use enhanced message with context
+      const apiMessages = [...messages.map(msg => ({
         role: msg.role,
         content: msg.content
-      }))
+      })), {
+        role: "user",
+        content: enhancedMessage
+      }]
 
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -189,11 +243,11 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         const chunk = decoder.decode(value)
         fullContent += chunk
 
-        // Update the assistant message with streaming content
+        // Update the assistant message with cleaned streaming content
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, content: fullContent }
+              ? { ...msg, content: cleanMessageContent(fullContent) }
               : msg
           )
         )
@@ -201,7 +255,8 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
 
       // Save assistant message to database after streaming completes
       if (fullContent) {
-        saveMessageToDb("assistant", fullContent)
+        const cleanedContent = cleanMessageContent(fullContent)
+        saveMessageToDb("assistant", cleanedContent)
 
         // Check if a chart was generated (look for chart-related keywords in response)
         const chartGenerated =
@@ -257,11 +312,6 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
     >
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 min-w-0">
         <h2 className="text-2xl font-fancy whitespace-nowrap">Procure AI</h2>
-        {csvId && (
-          <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-            Dataset: {csvId}
-          </p>
-        )}
         <Button
           variant="ghost"
           size="icon"
@@ -297,16 +347,38 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
                       : "bg-muted text-foreground rounded-bl-sm"
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                  <div className="text-sm break-words leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5">
                     {message.content ? (
-                      cleanMessageContent(message.content)
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code: ({ node, inline, className, children, ...props }: any) => {
+                            return inline ? (
+                              <code className="bg-muted px-1 py-0.5 rounded text-xs" {...props}>
+                                {children}
+                              </code>
+                            ) : (
+                              <code className="block bg-muted p-2 rounded text-xs overflow-x-auto" {...props}>
+                                {children}
+                              </code>
+                            )
+                          },
+                          a: ({ node, children, ...props }: any) => (
+                            <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props}>
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
                     ) : isLoading && message.role === "assistant" ? (
                       <span className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Thinking...
                       </span>
                     ) : null}
-                  </p>
+                  </div>
                   <div className="mt-1.5 flex items-center justify-end">
                     <span className="text-xs opacity-60">
                       {message.timestamp.toLocaleTimeString([], {
@@ -331,7 +403,19 @@ export function ChatSidebar({ open, onOpenChange, csvId, initialPrompt, dashboar
         <div ref={messagesEndRef} />
       </div>
       <Separator className="shrink-0" />
-      <div className="px-4 h-16 py-3">
+      <div className="px-4 py-3 space-y-2">
+        {widgetContexts && widgetContexts.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {widgetContexts.map((widget) => (
+              <WidgetContextBadge
+                key={widget.widgetId}
+                widgetTitle={widget.title}
+                widgetType={widget.type}
+                onClear={() => handleRemoveContext(widget.widgetId)}
+              />
+            ))}
+          </div>
+        )}
         <div className="flex gap-2">
           <Input
             value={inputValue}

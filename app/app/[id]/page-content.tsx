@@ -62,6 +62,14 @@ export function PageContent({ id }: PageContentProps) {
   const [datasets, setDatasets] = React.useState<any[]>([])
   const [loadingDatasets, setLoadingDatasets] = React.useState(false)
   const [availableDatasets, setAvailableDatasets] = React.useState<any[] | null>(null)
+  const [widgetContexts, setWidgetContexts] = React.useState<Array<{
+    widgetId: string
+    title?: string
+    type?: string
+    highchartsConfig?: any
+    data?: any
+    categories?: string[]
+  }>>([])
 
   // Restore chat sidebar open state from localStorage
   React.useEffect(() => {
@@ -228,6 +236,30 @@ export function PageContent({ id }: PageContentProps) {
     },
     [id]
   )
+
+  const handleAddWidgetToContext = React.useCallback((widgetId: string, widgetData: any) => {
+    setWidgetContexts(prev => {
+      // Check if widget already exists
+      if (prev.some(w => w.widgetId === widgetId)) {
+        toast.info(`"${widgetData.title || 'Widget'}" is already in context`)
+        return prev
+      }
+      // Add new widget
+      toast.success(`"${widgetData.title || 'Widget'}" added to chat context`)
+      return [...prev, widgetData]
+    })
+    setIsChatOpen(true) // Auto-open chat
+  }, [])
+
+  const handleRemoveWidgetContext = React.useCallback((widgetId: string) => {
+    setWidgetContexts(prev => {
+      const widget = prev.find(w => w.widgetId === widgetId)
+      if (widget) {
+        toast.success(`"${widget.title || 'Widget'}" removed from context`)
+      }
+      return prev.filter(w => w.widgetId !== widgetId)
+    })
+  }, [])
 
   React.useEffect(() => {
     setIsMounted(true)
@@ -448,7 +480,7 @@ export function PageContent({ id }: PageContentProps) {
 
   return (
     <div className="flex h-full w-full overflow-hidden relative">
-      <div className={`flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${isAudioBarCollapsed ? 'pb-0' : 'pb-16'}`}>
+      <div className={`flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${isAudioBarCollapsed ? 'pb-0' : 'pb-16'} ${isChatOpen ? 'mr-[24rem]' : 'mr-0'}`}>
         <AppHeader
           breadcrumbs={[
             { label: "Dashboards", href: "/app" },
@@ -554,6 +586,7 @@ export function PageContent({ id }: PageContentProps) {
               onItemsChange={handleItemsChange}
               onWidgetDelete={handleWidgetDelete}
               dashboardId={id}
+              onAddWidgetToContext={handleAddWidgetToContext}
             />
           ) : (
             <div className="col-span-3 flex items-center justify-center text-muted-foreground">
@@ -643,6 +676,8 @@ export function PageContent({ id }: PageContentProps) {
         initialPrompt={initialPrompt}
         dashboardId={id}
         onChartGenerated={reloadCharts}
+        widgetContexts={widgetContexts}
+        onRemoveWidgetContext={handleRemoveWidgetContext}
       />
     </div>
   )

@@ -92,9 +92,10 @@ interface BoardItemComponentProps {
   widget: Widget
   onWidgetDelete?: (widgetId: string) => void
   dashboardId?: string
+  onAddWidgetToContext?: (widgetId: string, widgetData: any) => void
 }
 
-const BoardItemComponent = React.memo(({ widget, onWidgetDelete, dashboardId }: BoardItemComponentProps) => {
+const BoardItemComponent = React.memo(({ widget, onWidgetDelete, dashboardId, onAddWidgetToContext }: BoardItemComponentProps) => {
   const chartRef = React.useRef<any>(null)
   const { copyChartToClipboard, isCopying, copySuccess } = useCopyChartToClipboard(chartRef)
   const [isDeleting, setIsDeleting] = React.useState(false)
@@ -150,12 +151,33 @@ const BoardItemComponent = React.memo(({ widget, onWidgetDelete, dashboardId }: 
     }
   }, [onWidgetDelete, dashboardId, widget.id])
 
+  const handleAddToContext = React.useCallback(() => {
+    if (onAddWidgetToContext) {
+      onAddWidgetToContext(widget.id, {
+        widgetId: widget.id,
+        title: widget.title,
+        type: widget.type || widget.widgetType,
+        highchartsConfig: widget.highchartsConfig,
+        data: widget.data,
+        categories: widget.categories
+      })
+    }
+  }, [onAddWidgetToContext, widget])
+
   return (
     <>
       <BoardItem
         header={widget.title || "Chart"}
         settings={
           <SpaceBetween direction="horizontal" size="xs">
+            {onAddWidgetToContext && (
+              <Button
+                variant="icon"
+                iconName="contact"
+                onClick={handleAddToContext}
+                ariaLabel="Add to chat context"
+              />
+            )}
             <Button
               variant="icon"
               iconName={copySuccess ? "status-positive" : isCopying ? "status-in-progress" : "copy"}
@@ -211,6 +233,7 @@ interface CloudscapeBoardDashboardProps {
   onItemsChange: (items: Widget[]) => void
   onWidgetDelete?: (widgetId: string) => void
   dashboardId?: string
+  onAddWidgetToContext?: (widgetId: string, widgetData: any) => void
 }
 
 export function CloudscapeBoardDashboard({
@@ -218,6 +241,7 @@ export function CloudscapeBoardDashboard({
   onItemsChange,
   onWidgetDelete,
   dashboardId,
+  onAddWidgetToContext,
 }: CloudscapeBoardDashboardProps) {
   // Create Map for O(1) widget lookups instead of O(n) array.find()
   const widgetsMap = React.useMemo(() => {
@@ -284,9 +308,9 @@ export function CloudscapeBoardDashboard({
       if (!widget) return null
 
       // Render the separate component that can properly use hooks
-      return <BoardItemComponent widget={widget} onWidgetDelete={onWidgetDelete} dashboardId={dashboardId} />
+      return <BoardItemComponent widget={widget} onWidgetDelete={onWidgetDelete} dashboardId={dashboardId} onAddWidgetToContext={onAddWidgetToContext} />
     },
-    [widgetsMap, onWidgetDelete, dashboardId]
+    [widgetsMap, onWidgetDelete, dashboardId, onAddWidgetToContext]
   )
 
   const i18nStrings: BoardProps.I18nStrings<Widget> = React.useMemo(

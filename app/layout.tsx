@@ -51,7 +51,7 @@ export default function RootLayout({
           <SidebarWrapper>
             {children}
             <Toaster />
-            <SonnerToaster position="top-right" richColors />
+            <SonnerToaster position="bottom-left" richColors duration={3000} />
           </SidebarWrapper>
         </TooltipProvider>
         <Analytics />
